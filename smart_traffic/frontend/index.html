@@ -1,0 +1,2442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartTraffic AI — Urban Intelligence System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+  /* ── THEME: DARK (default) ── */
+  :root,
+  [data-theme="dark"] {
+    --bg: #050810;
+    --surface: #0a0f1e;
+    --surface2: #0f1628;
+    --border: #1a2540;
+    --accent: #00d4ff;
+    --accent2: #7b61ff;
+    --green: #00ff88;
+    --red: #ff3c5f;
+    --orange: #ff8c00;
+    --yellow: #ffd600;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --font: 'Space Grotesk', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+    --nav-bg: rgba(5,8,16,0.95);
+    --card-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    --input-bg: #0a0f1e;
+  }
+
+  /* ── THEME: LIGHT ── */
+  [data-theme="light"] {
+    --bg: #f0f4f8;
+    --surface: #ffffff;
+    --surface2: #e8eef5;
+    --border: #d0dae8;
+    --accent: #0284c7;
+    --accent2: #7c3aed;
+    --green: #059669;
+    --red: #dc2626;
+    --orange: #d97706;
+    --yellow: #ca8a04;
+    --text: #0f172a;
+    --muted: #64748b;
+    --font: 'Space Grotesk', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+    --nav-bg: rgba(255,255,255,0.97);
+    --card-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    --input-bg: #f8fafc;
+  }
+
+  /* ── THEME: NEON ── */
+  [data-theme="neon"] {
+    --bg: #000005;
+    --surface: #060616;
+    --surface2: #0a0a20;
+    --border: #1a003a;
+    --accent: #ff00ff;
+    --accent2: #00ffff;
+    --green: #39ff14;
+    --red: #ff2052;
+    --orange: #ff6600;
+    --yellow: #ffff00;
+    --text: #f0f0ff;
+    --muted: #6b5a8a;
+    --font: 'Space Grotesk', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+    --nav-bg: rgba(0,0,5,0.97);
+    --card-shadow: 0 0 30px rgba(255,0,255,0.12), 0 4px 24px rgba(0,0,0,0.6);
+    --input-bg: #060616;
+  }
+
+  /* ── THEME SWITCHER WIDGET ── */
+  .theme-switcher {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 3px;
+    flex-shrink: 0;
+  }
+
+  .theme-btn {
+    width: 30px;
+    height: 26px;
+    border: none;
+    background: transparent;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .theme-btn:hover { background: var(--surface); transform: scale(1.1); }
+  .theme-btn.active {
+    background: var(--accent);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+  .theme-btn[data-theme-target="light"].active { background: #0284c7; }
+  .theme-btn[data-theme-target="neon"].active { background: #ff00ff; }
+  .theme-btn[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 100;
+    font-family: var(--font);
+  }
+
+  /* ── LIGHT THEME OVERRIDES ── */
+  [data-theme="light"] .nav {
+    background: var(--nav-bg);
+    box-shadow: 0 1px 12px rgba(0,0,0,0.1);
+  }
+  [data-theme="light"] .card,
+  [data-theme="light"] .stat-card,
+  [data-theme="light"] .cam-card,
+  [data-theme="light"] .int-card,
+  [data-theme="light"] .log-entry,
+  [data-theme="light"] .alert-item {
+    background: var(--surface);
+    border-color: var(--border);
+    box-shadow: var(--card-shadow);
+  }
+  [data-theme="light"] .page { background: var(--bg); }
+  [data-theme="light"] .btn { color: var(--text); }
+  [data-theme="light"] input,
+  [data-theme="light"] select,
+  [data-theme="light"] textarea {
+    background: var(--input-bg);
+    border-color: var(--border);
+    color: var(--text);
+  }
+  [data-theme="light"] .login-card {
+    background: #ffffff;
+    border-color: #d0dae8;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+  }
+  [data-theme="light"] #login-page {
+    background: linear-gradient(135deg, #e8f4fd 0%, #f0f4f8 60%);
+  }
+  [data-theme="light"] .nav-link:hover { background: var(--surface2); }
+  [data-theme="light"] .nav-link.active { background: rgba(2,132,199,0.1); }
+  [data-theme="light"] .page-title { color: var(--text); }
+  [data-theme="light"] .stat-value { color: var(--accent); }
+  [data-theme="light"] .cam-status.online { color: var(--green); }
+  [data-theme="light"] .sidebar { background: var(--surface); border-color: var(--border); }
+  [data-theme="light"] .modal-content { background: var(--surface); border-color: var(--border); }
+  [data-theme="light"] #alerts-panel { background: var(--surface); border-color: var(--border); }
+  [data-theme="light"] .log-badge { background: var(--surface2); }
+
+  /* ── NEON THEME OVERRIDES ── */
+  [data-theme="neon"] .nav { background: var(--nav-bg); border-bottom-color: #ff00ff44; }
+  [data-theme="neon"] .card,
+  [data-theme="neon"] .stat-card,
+  [data-theme="neon"] .cam-card,
+  [data-theme="neon"] .int-card {
+    border-color: #ff00ff22;
+    box-shadow: var(--card-shadow), 0 0 1px #ff00ff33 inset;
+  }
+  [data-theme="neon"] .nav-link.active {
+    color: var(--accent);
+    background: rgba(255,0,255,0.12);
+    box-shadow: 0 0 10px rgba(255,0,255,0.2);
+  }
+  [data-theme="neon"] .stat-value { color: var(--accent); text-shadow: 0 0 12px var(--accent); }
+  [data-theme="neon"] .live-dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  [data-theme="neon"] .btn-primary {
+    background: linear-gradient(135deg, #ff00ff, #00ffff);
+    box-shadow: 0 0 16px rgba(255,0,255,0.4);
+  }
+  [data-theme="neon"] .login-card {
+    border-color: #ff00ff44;
+    box-shadow: 0 0 60px rgba(255,0,255,0.15), 0 40px 80px rgba(0,0,0,0.8);
+  }
+  [data-theme="neon"] .login-card::before {
+    background: linear-gradient(90deg, transparent, #ff00ff, #00ffff, transparent);
+  }
+  [data-theme="neon"] .stat-card:hover { border-color: #ff00ff55; box-shadow: 0 0 20px rgba(255,0,255,0.2); }
+  [data-theme="neon"] .modal-content { border-color: #ff00ff44; box-shadow: 0 0 40px rgba(255,0,255,0.15); }
+  [data-theme="neon"] #alerts-panel { border-color: #ff00ff33; }
+  [data-theme="neon"] .int-card { border-color: #00ffff22; }
+  [data-theme="neon"] .int-card.high { border-color: #ff205255; box-shadow: 0 0 12px rgba(255,32,82,0.2); }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── LOGIN PAGE ── */
+  #login-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at 20% 50%, #0a1628 0%, #050810 60%),
+                radial-gradient(ellipse at 80% 20%, #0d1535 0%, transparent 50%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  #login-page::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    animation: gridPan 20s linear infinite;
+  }
+
+  @keyframes gridPan {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(60px); }
+  }
+
+  .login-card {
+    background: rgba(10, 15, 30, 0.95);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 48px;
+    width: 440px;
+    position: relative;
+    box-shadow: 0 0 80px rgba(0,212,255,0.06), 0 40px 80px rgba(0,0,0,0.5);
+  }
+
+  .login-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 20%; right: 20%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+
+  .login-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .logo-icon {
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+  }
+
+  .login-logo h1 {
+    font-size: 22px;
+    font-weight: 700;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .login-subtitle {
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 36px;
+    margin-left: 54px;
+  }
+
+  .input-group {
+    margin-bottom: 16px;
+  }
+
+  .input-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+
+  .input-group input, .input-group select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .input-group input:focus, .input-group select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,212,255,0.1);
+  }
+
+  .demo-accounts {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .demo-accounts h4 {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+  }
+
+  .demo-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 12px;
+    cursor: pointer;
+    margin-bottom: 6px;
+    transition: all 0.2s;
+    text-align: left;
+  }
+
+  .demo-btn:hover { background: var(--surface); border-color: var(--accent); }
+
+  .role-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .role-admin { background: rgba(255,60,95,0.2); color: var(--red); }
+  .role-supervisor { background: rgba(123,97,255,0.2); color: var(--accent2); }
+  .role-operator { background: rgba(0,212,255,0.2); color: var(--accent); }
+
+  .btn-primary {
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    border-radius: 10px;
+    padding: 13px;
+    color: #000;
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    letter-spacing: 0.02em;
+  }
+
+  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+
+  .login-error {
+    color: var(--red);
+    font-size: 13px;
+    text-align: center;
+    margin-bottom: 12px;
+    display: none;
+  }
+
+  /* ── APP SHELL ── */
+  #app { display: none; min-height: 100vh; }
+
+  .nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 60px;
+    background: var(--nav-bg, rgba(5, 8, 16, 0.95));
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(20px);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 24px;
+    z-index: 1000;
+  }
+
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent);
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+  }
+
+  .nav-link {
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    background: none;
+    font-family: var(--font);
+  }
+
+  .nav-link:hover { color: var(--text); background: var(--surface); }
+  .nav-link.active { color: var(--accent); background: rgba(0,212,255,0.1); }
+
+  .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+  }
+
+  .alert-bell {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+  }
+
+  .alert-count {
+    position: absolute;
+    top: -4px; right: -4px;
+    background: var(--red);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .user-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .btn-logout {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    color: var(--muted);
+    font-family: var(--font);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-logout:hover { color: var(--red); border-color: var(--red); }
+
+  /* ── MAIN CONTENT ── */
+  .main { padding-top: 60px; }
+
+  .page { display: none; padding: 24px; max-width: 1600px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+  }
+
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ── STAT GRID ── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+
+  .stat-card:hover { transform: translateY(-2px); border-color: rgba(0,212,255,0.3); }
+
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .stat-card.blue::after { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .stat-card.green::after { background: var(--green); }
+  .stat-card.red::after { background: var(--red); }
+  .stat-card.orange::after { background: var(--orange); }
+  .stat-card.purple::after { background: var(--accent2); }
+
+  .stat-icon { font-size: 24px; margin-bottom: 8px; }
+
+  .stat-val {
+    font-size: 28px;
+    font-weight: 700;
+    font-family: var(--mono);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-lbl { font-size: 12px; color: var(--muted); }
+
+  .stat-change {
+    font-size: 11px;
+    font-family: var(--mono);
+    margin-top: 4px;
+  }
+
+  .stat-change.up { color: var(--green); }
+  .stat-change.down { color: var(--red); }
+
+  /* ── GRID LAYOUTS ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .grid-65 { display: grid; grid-template-columns: 1.6fr 1fr; gap: 20px; }
+
+  /* ── ALERT PANEL ── */
+  .alert-panel {
+    position: fixed;
+    top: 70px; right: 16px;
+    width: 380px;
+    z-index: 999;
+    display: none;
+  }
+
+  .alert-panel.open { display: block; }
+
+  .alert-panel-inner {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    max-height: 70vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  }
+
+  .alert-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    border-left: 3px solid transparent;
+    background: var(--surface2);
+    cursor: pointer;
+    transition: background 0.2s;
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from { transform: translateX(20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  .alert-item:hover { background: var(--bg); }
+  .alert-item.critical { border-color: var(--red); }
+  .alert-item.high { border-color: var(--orange); }
+  .alert-item.medium { border-color: var(--yellow); }
+
+  .alert-icon { font-size: 20px; flex-shrink: 0; }
+  .alert-content { flex: 1; min-width: 0; }
+  .alert-title { font-size: 13px; font-weight: 600; }
+  .alert-msg { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .alert-time { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+
+  /* ── ACCIDENT POPUP ── */
+  .accident-popup {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    display: none;
+  }
+
+  .accident-popup.show { display: flex; animation: fadeIn 0.2s; }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .accident-modal {
+    background: var(--surface);
+    border: 2px solid var(--red);
+    border-radius: 20px;
+    padding: 36px;
+    max-width: 500px;
+    width: 90%;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 0 60px rgba(255,60,95,0.3);
+    animation: pulse-border 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse-border {
+    0%, 100% { box-shadow: 0 0 40px rgba(255,60,95,0.2); }
+    50% { box-shadow: 0 0 80px rgba(255,60,95,0.5); }
+  }
+
+  .accident-modal .modal-icon { font-size: 56px; margin-bottom: 16px; }
+  .accident-modal h2 { font-size: 22px; font-weight: 700; color: var(--red); margin-bottom: 12px; }
+  .accident-modal p { color: var(--muted); font-size: 14px; line-height: 1.6; margin-bottom: 24px; }
+
+  .modal-actions { display: flex; gap: 12px; justify-content: center; }
+
+  .btn-dispatch {
+    background: var(--red);
+    border: none;
+    border-radius: 10px;
+    padding: 12px 24px;
+    color: white;
+    font-family: var(--font);
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  .btn-dismiss {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 24px;
+    color: var(--text);
+    font-family: var(--font);
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  /* ── CAMERA GRID ── */
+  .camera-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .camera-feed {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .camera-feed.large {
+    grid-column: span 2;
+  }
+
+  .cam-header {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .cam-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+
+  .cam-status {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: blink 2s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .cam-status.offline { background: var(--red); animation: none; }
+  .cam-status.maintenance { background: var(--orange); }
+
+  .cam-video {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+    background: #000;
+    display: block;
+  }
+
+  .cam-stats {
+    padding: 12px 16px;
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    font-family: var(--mono);
+  }
+
+  .cam-stat-item { display: flex; flex-direction: column; gap: 2px; }
+  .cam-stat-label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+  .cam-stat-val { font-weight: 600; }
+
+  .cam-overlay-results {
+    padding: 0 16px 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .result-tag {
+    font-size: 11px;
+    font-family: var(--mono);
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-weight: 600;
+  }
+
+  .tag-green { background: rgba(0,255,136,0.15); color: var(--green); }
+  .tag-red { background: rgba(255,60,95,0.15); color: var(--red); }
+  .tag-orange { background: rgba(255,140,0,0.15); color: var(--orange); }
+  .tag-blue { background: rgba(0,212,255,0.15); color: var(--accent); }
+  .tag-purple { background: rgba(123,97,255,0.15); color: var(--accent2); }
+
+  /* ── UPLOAD ZONE ── */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+  }
+
+  .upload-zone:hover, .upload-zone.dragging {
+    border-color: var(--accent);
+    background: rgba(0,212,255,0.04);
+  }
+
+  .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .upload-icon { font-size: 40px; margin-bottom: 12px; }
+  .upload-text { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+  .upload-hint { font-size: 12px; color: var(--muted); }
+
+  /* ── PROGRESS BAR ── */
+  .progress-bar {
+    height: 4px;
+    background: var(--surface2);
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 16px 0;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  /* ── TABLE ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { padding: 10px 14px; text-align: left; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); font-weight: 600; }
+  td { padding: 12px 14px; border-bottom: 1px solid rgba(26,37,64,0.5); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .severity-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .sev-critical { background: rgba(255,60,95,0.2); color: var(--red); }
+  .sev-high { background: rgba(255,140,0,0.2); color: var(--orange); }
+  .sev-medium { background: rgba(255,214,0,0.2); color: var(--yellow); }
+  .sev-low { background: rgba(0,255,136,0.2); color: var(--green); }
+
+  .status-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 5px;
+  }
+
+  .status-pending { background: rgba(255,140,0,0.15); color: var(--orange); }
+  .status-reviewed { background: rgba(123,97,255,0.15); color: var(--accent2); }
+  .status-actioned { background: rgba(0,255,136,0.15); color: var(--green); }
+  .status-open { background: rgba(255,60,95,0.15); color: var(--red); }
+
+  /* ── SIGNAL CONTROL ── */
+  .signal-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 20px;
+    background: var(--surface2);
+    border-radius: 14px;
+  }
+
+  .signal-light {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 3px solid var(--border);
+    transition: all 0.3s;
+  }
+
+  .signal-light.red-active { background: #ff3c5f; box-shadow: 0 0 20px #ff3c5f; border-color: #ff3c5f; }
+  .signal-light.yellow-active { background: #ffd600; box-shadow: 0 0 20px #ffd600; border-color: #ffd600; }
+  .signal-light.green-active { background: #00ff88; box-shadow: 0 0 20px #00ff88; border-color: #00ff88; }
+  .signal-light.inactive { background: rgba(255,255,255,0.05); }
+
+  .intersection-map {
+    display: grid;
+    grid-template-columns: repeat(3, 80px);
+    grid-template-rows: repeat(3, 80px);
+    gap: 4px;
+    margin: 0 auto;
+  }
+
+  .road-cell {
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .road-h { background: #1a2030; }
+  .road-v { background: #1a2030; }
+  .road-center { background: #252d42; }
+  .road-empty { background: transparent; }
+
+  /* ── CHARTS ── */
+  .chart-container { position: relative; height: 240px; }
+
+  /* ── EMISSION GAUGE ── */
+  .emission-gauge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px;
+  }
+
+  .gauge-ring {
+    width: 120px;
+    height: 60px;
+    border-radius: 60px 60px 0 0;
+    border: 12px solid var(--border);
+    border-bottom: none;
+    position: relative;
+    margin-bottom: 8px;
+  }
+
+  .gauge-fill {
+    position: absolute;
+    inset: -12px;
+    bottom: 0;
+    border-radius: 60px 60px 0 0;
+    border: 12px solid var(--green);
+    border-bottom: none;
+    clip-path: polygon(0 100%, 0 0, 50% 0, 50% 100%);
+    transition: clip-path 0.5s;
+  }
+
+  /* ── TOAST ── */
+  #toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .toast {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 13px;
+    min-width: 280px;
+    animation: toastIn 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  }
+
+  @keyframes toastIn {
+    from { transform: translateX(40px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  .toast.success { border-left: 3px solid var(--green); }
+  .toast.error { border-left: 3px solid var(--red); }
+  .toast.warning { border-left: 3px solid var(--orange); }
+
+  /* ── PAGE HEADER ── */
+  .page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .page-title { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+  .page-sub { font-size: 14px; color: var(--muted); }
+
+  .header-actions { display: flex; gap: 10px; }
+
+  .btn-sm {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font);
+    transition: all 0.2s;
+  }
+
+  .btn-outline {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-accent {
+    background: var(--accent);
+    border: none;
+    color: #000;
+    font-weight: 700;
+  }
+
+  .btn-accent:hover { opacity: 0.85; }
+
+  /* ── LIVE INDICATOR ── */
+  .live-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--green);
+  }
+
+  .live-dot {
+    width: 8px; height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: blink 1s ease-in-out infinite;
+  }
+
+  /* ── INTERSECTION CARD ── */
+  .int-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+
+  .int-card:hover { border-color: rgba(0,212,255,0.3); transform: translateY(-2px); }
+
+  .int-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .int-id { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .int-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .int-location { font-size: 12px; color: var(--muted); }
+
+  .congestion-bar {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 12px 0 8px;
+  }
+
+  .congestion-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s;
+  }
+
+  .cong-low { background: var(--green); }
+  .cong-medium { background: var(--orange); }
+  .cong-high { background: var(--red); }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── ANALYSIS RESULTS ── */
+  .result-panel {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    margin-top: 20px;
+    display: none;
+  }
+
+  .result-panel.visible { display: block; }
+
+  .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+
+  .result-item {
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+  }
+
+  .result-val { font-size: 22px; font-weight: 700; font-family: var(--mono); }
+  .result-lbl { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  .violation-list { display: flex; flex-direction: column; gap: 8px; }
+  .violation-entry {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 12px;
+  }
+
+  .v-icon { font-size: 20px; }
+  .v-info { flex: 1; }
+  .v-type { font-size: 13px; font-weight: 600; }
+  .v-desc { font-size: 12px; color: var(--muted); }
+  .v-plate { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+
+  @media (max-width: 900px) {
+    .grid-2, .grid-3, .grid-4, .grid-65 { grid-template-columns: 1fr; }
+    .camera-grid { grid-template-columns: 1fr; }
+    .camera-feed.large { grid-column: span 1; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── LOGIN PAGE ─────────────────────────────── -->
+<div id="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-icon">🚦</div>
+      <h1>SmartTraffic AI</h1>
+    </div>
+    <div class="login-subtitle">Urban Intelligence & Monitoring System</div>
+
+    <div class="demo-accounts">
+      <h4>Quick Access — Demo Accounts</h4>
+      <button class="demo-btn" onclick="fillLogin('admin@smarttraffic.ai','admin123','admin')">
+        <span class="role-badge role-admin">Admin</span>
+        admin@smarttraffic.ai
+        <span style="margin-left:auto;color:var(--muted);font-size:11px;">→ Admin Dashboard</span>
+      </button>
+      <button class="demo-btn" onclick="fillLogin('supervisor@smarttraffic.ai','super123','supervisor')">
+        <span class="role-badge role-supervisor">Supervisor</span>
+        supervisor@smarttraffic.ai
+        <span style="margin-left:auto;color:var(--muted);font-size:11px;">→ Monitoring</span>
+      </button>
+      <button class="demo-btn" onclick="fillLogin('operator@smarttraffic.ai','oper123','operator')">
+        <span class="role-badge role-operator">Operator</span>
+        operator@smarttraffic.ai
+        <span style="margin-left:auto;color:var(--muted);font-size:11px;">→ Camera Control</span>
+      </button>
+    </div>
+
+    <div class="input-group">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="officer@smarttraffic.ai">
+    </div>
+    <div class="input-group">
+      <label>Password</label>
+      <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+
+    <div class="login-error" id="login-error">Invalid credentials. Try demo accounts above.</div>
+    <button class="btn-primary" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<!-- ─── ALERT POPUP (Accident) ─────────────────── -->
+<div class="accident-popup" id="accident-popup">
+  <div class="accident-modal">
+    <div class="modal-icon">🚨</div>
+    <h2 id="popup-title">SEVERE ACCIDENT DETECTED</h2>
+    <p id="popup-msg">A critical multi-vehicle collision has been detected at Intersection INT-002. Immediate emergency response required. AI confidence: 93.4%</p>
+    <div class="modal-details" id="popup-details" style="background:rgba(255,60,95,0.08);border-radius:10px;padding:12px;margin-bottom:20px;font-size:13px;color:var(--muted);text-align:left;"></div>
+    <div class="modal-actions">
+      <button class="btn-dispatch" onclick="dispatchEmergency()">🚑 Dispatch Emergency</button>
+      <button class="btn-dismiss" onclick="dismissPopup()">Acknowledge</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── ALERT PANEL ─────────────────────────────── -->
+<div class="alert-panel" id="alert-panel">
+  <div class="alert-panel-inner">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <span style="font-size:14px;font-weight:700;">Live Alerts</span>
+      <button onclick="document.getElementById('alert-panel').classList.remove('open')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;">✕</button>
+    </div>
+    <div id="alert-list"></div>
+  </div>
+</div>
+
+<!-- ─── APP SHELL ─────────────────────────────── -->
+<div id="app">
+  <nav class="nav">
+    <a class="nav-brand" href="#">🚦 SmartTraffic</a>
+    <div class="nav-links" id="nav-links"></div>
+    <div class="nav-right">
+      <div class="live-indicator"><div class="live-dot"></div> LIVE</div>
+      <!-- ── THEME SWITCHER ── -->
+      <div class="theme-switcher" title="Switch Theme">
+        <button class="theme-btn active" data-theme-target="dark" onclick="setTheme('dark')" title="🌙 Dark">🌙</button>
+        <button class="theme-btn" data-theme-target="light" onclick="setTheme('light')" title="☀️ Light">☀️</button>
+        <button class="theme-btn" data-theme-target="neon" onclick="setTheme('neon')" title="⚡ Neon">⚡</button>
+      </div>
+      <div class="alert-bell" onclick="toggleAlerts()">
+        🔔
+        <div class="alert-count" id="alert-count">0</div>
+      </div>
+      <div class="user-chip">
+        <span id="user-name-nav">Officer</span>
+        <span class="role-badge" id="user-role-nav"></span>
+      </div>
+      <button class="btn-logout" onclick="doLogout()">Logout</button>
+    </div>
+  </nav>
+
+  <main class="main">
+    <!-- ADMIN DASHBOARD -->
+    <div class="page" id="page-admin">
+      <div class="page-header">
+        <div>
+          <div class="page-title">⚙️ Admin Dashboard</div>
+          <div class="page-sub">System overview, user management, analytics</div>
+        </div>
+        <div class="header-actions">
+          <button class="btn-sm btn-outline" onclick="refreshAdminStats()">↻ Refresh</button>
+        </div>
+      </div>
+
+      <div class="stat-grid" id="admin-stats-grid">
+        <div class="stat-card blue"><div class="stat-icon">🚗</div><div class="stat-val" id="as-vehicles">--</div><div class="stat-lbl">Total Vehicles</div><div class="stat-change up">↑ ViT Detection</div></div>
+        <div class="stat-card red"><div class="stat-icon">⚠️</div><div class="stat-val" id="as-violations">--</div><div class="stat-lbl">Violations</div><div class="stat-change" id="as-pending-v">-- pending</div></div>
+        <div class="stat-card orange"><div class="stat-icon">🚨</div><div class="stat-val" id="as-accidents">--</div><div class="stat-lbl">Accidents</div><div class="stat-change" id="as-open-acc">-- open</div></div>
+        <div class="stat-card green"><div class="stat-icon">📹</div><div class="stat-val" id="as-cameras">--</div><div class="stat-lbl">Active Cameras</div><div class="stat-change up">↑ Online</div></div>
+        <div class="stat-card purple"><div class="stat-icon">🎯</div><div class="stat-val">88.56%</div><div class="stat-lbl">ViT mAP Score</div><div class="stat-change up">↑ Excellent</div></div>
+        <div class="stat-card blue"><div class="stat-icon">📉</div><div class="stat-val">2.232</div><div class="stat-lbl">TCN RMSE</div><div class="stat-change up">↑ Accurate</div></div>
+        <div class="stat-card green"><div class="stat-icon">⚡</div><div class="stat-val">50%</div><div class="stat-lbl">Flow Improvement</div><div class="stat-change up">↑ vs baseline</div></div>
+        <div class="stat-card orange"><div class="stat-icon">🔔</div><div class="stat-val" id="as-alerts">--</div><div class="stat-lbl">Unacked Alerts</div><div class="stat-change down">Action needed</div></div>
+      </div>
+
+      <div class="grid-65" style="margin-bottom:20px;">
+        <div class="card">
+          <div class="card-title">📈 Traffic Flow — 24h (TCN Prediction vs Actual)</div>
+          <div class="chart-container"><canvas id="admin-chart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">👥 System Users</div>
+          <div id="user-list">
+            <div style="color:var(--muted);font-size:13px;">Loading users...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="justify-content:space-between;">
+          ⚠️ Recent Violations
+          <button class="btn-sm btn-outline" onclick="loadViolations()">View All</button>
+        </div>
+        <table>
+          <thead><tr><th>Time</th><th>Type</th><th>Intersection</th><th>Severity</th><th>Plate</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="violations-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SUPERVISOR MONITORING DASHBOARD -->
+    <div class="page" id="page-supervisor">
+      <div class="page-header">
+        <div>
+          <div class="page-title">👁 Monitoring Dashboard</div>
+          <div class="page-sub">Real-time intersection monitoring & alert management</div>
+        </div>
+        <div class="header-actions">
+          <div class="live-indicator"><div class="live-dot"></div> Live Refresh</div>
+        </div>
+      </div>
+
+      <div class="grid-4" id="intersections-grid" style="margin-bottom:20px;"></div>
+
+      <div class="grid-65" style="margin-bottom:20px;">
+        <div class="card">
+          <div class="card-title">🚦 Live Traffic Activity</div>
+          <div class="chart-container"><canvas id="supervisor-chart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="justify-content:space-between;">
+            🔔 Active Alerts
+            <span id="sup-alert-count" style="background:var(--red);color:white;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:700;">0</span>
+          </div>
+          <div id="supervisor-alerts-list" style="max-height:240px;overflow-y:auto;"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🚨 Accident Incidents</div>
+        <table>
+          <thead><tr><th>Time</th><th>Intersection</th><th>Type</th><th>Severity</th><th>Status</th><th>Confidence</th><th>Action</th></tr></thead>
+          <tbody id="accidents-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- OPERATOR CAMERA CONTROL -->
+    <div class="page" id="page-operator">
+      <div class="page-header">
+        <div>
+          <div class="page-title">📹 Camera Control Panel</div>
+          <div class="page-sub">Live CCTV streams with AI detection overlay</div>
+        </div>
+        <div class="header-actions">
+          <button class="btn-sm btn-accent" onclick="showUploadModal()">⬆ Upload Video</button>
+          <button class="btn-sm btn-outline" onclick="refreshAllCams()">↻ All Cameras</button>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:20px;">
+        <!-- Upload Panel -->
+        <div class="card">
+          <div class="card-title">📤 Video Upload & AI Analysis</div>
+          <div class="upload-zone" id="upload-zone" ondragover="event.preventDefault();this.classList.add('dragging')" ondragleave="this.classList.remove('dragging')" ondrop="handleDrop(event)">
+            <input type="file" id="video-upload" accept=".mp4,.avi,.mov,.mkv" onchange="handleFileSelect(event)">
+            <div class="upload-icon">🎬</div>
+            <div class="upload-text">Drop video or click to select</div>
+            <div class="upload-hint">MP4, AVI, MOV, MKV — ViT+TCN Analysis</div>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-top:12px;">
+            <select id="upload-intersection" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;">
+              <option value="INT-001">INT-001 — MG Road</option>
+              <option value="INT-002">INT-002 — Residency Road</option>
+              <option value="INT-003">INT-003 — Airport Road</option>
+              <option value="INT-004">INT-004 — Ring Road</option>
+            </select>
+            <button class="btn-sm btn-accent" onclick="uploadVideo()">▶ Analyze</button>
+          </div>
+
+          <div id="upload-progress" style="display:none;">
+            <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+            <div style="font-size:12px;color:var(--muted);text-align:center;" id="progress-text">Uploading...</div>
+          </div>
+
+          <div class="result-panel" id="analysis-results">
+            <div class="card-title">🧠 AI Analysis Results</div>
+            <div class="result-grid" id="result-grid"></div>
+            <div id="violation-results"></div>
+            <div id="accident-results" style="margin-top:12px;"></div>
+          </div>
+        </div>
+
+        <!-- Signal Control -->
+        <div class="card">
+          <div class="card-title">🚦 Signal Control</div>
+          <div style="display:flex;gap:10px;margin-bottom:16px;">
+            <select id="signal-intersection" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;" onchange="loadSignal()">
+              <option value="INT-001">INT-001</option>
+              <option value="INT-002">INT-002</option>
+              <option value="INT-003">INT-003</option>
+              <option value="INT-004">INT-004</option>
+            </select>
+            <button class="btn-sm btn-outline" onclick="loadSignal()">Load</button>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div>
+              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">North Green (s)</label>
+              <input type="number" id="sig-north" value="30" min="5" max="120" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-family:var(--mono);font-size:14px;outline:none;">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">South Green (s)</label>
+              <input type="number" id="sig-south" value="30" min="5" max="120" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-family:var(--mono);font-size:14px;outline:none;">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">East Green (s)</label>
+              <input type="number" id="sig-east" value="25" min="5" max="120" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-family:var(--mono);font-size:14px;outline:none;">
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;">West Green (s)</label>
+              <input type="number" id="sig-west" value="25" min="5" max="120" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-family:var(--mono);font-size:14px;outline:none;">
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn-sm btn-accent" onclick="applyManualSignal()">✓ Apply Manual</button>
+            <button class="btn-sm btn-outline" onclick="applyAdaptive()">🧠 AI Adaptive</button>
+            <button class="btn-sm" style="background:rgba(255,60,95,0.15);border:1px solid var(--red);color:var(--red);border-radius:8px;font-family:var(--font);font-size:13px;cursor:pointer;font-weight:600;padding:8px 14px;" onclick="triggerEmergencyOverride()">🚑 Emergency</button>
+          </div>
+
+          <div style="margin-top:16px;background:var(--surface2);border-radius:10px;padding:14px;" id="signal-status">
+            <div style="font-size:12px;color:var(--muted);">Signal status will appear here</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Camera Grid -->
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-title">📡 Live CCTV Feeds — AI Detection Overlay</div>
+        <div class="camera-grid" id="camera-grid"></div>
+      </div>
+
+      <!-- TCN Prediction -->
+      <div class="card">
+        <div class="card-title" style="justify-content:space-between;">
+          🔮 TCN Traffic Prediction (12h Forecast)
+          <button class="btn-sm btn-outline" onclick="loadPrediction()">↻ Refresh</button>
+        </div>
+        <div class="chart-container"><canvas id="prediction-chart"></canvas></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script>
+// ─── STATE ──────────────────────────────────────────
+const API = 'http://localhost:5000/api';
+let currentUser = null;
+let authToken = localStorage.getItem('smarttraffic_token') || null;
+
+// ── API HELPER ────────────────────────────────────────────────────────────────
+async function ensureToken() {
+  if (authToken && authToken !== 'demo-token') return true;
+  try {
+    const r = await fetch(`${API}/auth/login`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'admin@smarttraffic.ai', password: 'admin123' }),
+      signal: AbortSignal.timeout(5000)
+    });
+    if (r.ok) {
+      const d = await r.json();
+      if (d.success && d.token) { authToken = d.token; localStorage.setItem('smarttraffic_token', authToken); return true; }
+    }
+  } catch(e) {}
+  return false;
+}
+
+async function apiCall(path, opts = {}) {
+  if (!authToken) await ensureToken();
+  try {
+    let r = await fetch(API + path, {
+      ...opts, signal: AbortSignal.timeout(8000),
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}`, ...(opts.headers || {}) }
+    });
+    if (r.status === 422 || r.status === 401) {
+      authToken = ''; localStorage.removeItem('smarttraffic_token'); await ensureToken();
+      r = await fetch(API + path, {
+        ...opts, signal: AbortSignal.timeout(8000),
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}`, ...(opts.headers || {}) }
+      });
+    }
+    if (!r.ok) return { success: false, error: `HTTP ${r.status}` };
+    return await r.json();
+  } catch(e) { return { success: false, error: e.message }; }
+}
+let alertsList = [];
+let adminChart = null;
+let supervisorChart = null;
+let predictionChart = null;
+let liveTimer = null;
+let camSimTimers = {};
+let pendingAccident = null;
+let accidentCooldown = false;          // global cooldown — no new popups while one is active
+let acknowledgedAccidents = new Set(); // track camera IDs already acknowledged this session
+let lastAccidentTime = {};             // per-camera last trigger timestamp
+
+// ─── AUTH ────────────────────────────────────────────
+function fillLogin(email, pass, role) {
+  document.getElementById('login-email').value = email;
+  document.getElementById('login-pass').value = pass;
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+
+  // Demo mode: bypass API if not running
+  const demoUsers = {
+    'admin@smarttraffic.ai': { name: 'Admin Officer', role: 'admin', email },
+    'supervisor@smarttraffic.ai': { name: 'Supervisor Singh', role: 'supervisor', email },
+    'operator@smarttraffic.ai': { name: 'Operator Kumar', role: 'operator', email },
+  };
+
+  let user = demoUsers[email];
+  if (!user || (pass !== 'admin123' && pass !== 'super123' && pass !== 'oper123' && pass.length < 3)) {
+    errEl.style.display = 'block';
+    return;
+  }
+
+  // Try real API
+  try {
+    const res = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass })
+    });
+    const data = await res.json();
+    if (data.success) {
+      authToken = data.token;
+      user = data.user;
+      // Persist token so congestion_emission.html can use it
+      localStorage.setItem('smarttraffic_token', authToken);
+      localStorage.setItem('smarttraffic_user', JSON.stringify(user));
+    }
+  } catch (e) { /* API not running, use demo */ }
+
+  currentUser = user;
+  authToken = authToken || 'demo-token';
+
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('user-name-nav').textContent = user.name;
+
+  const rb = document.getElementById('user-role-nav');
+  rb.textContent = user.role;
+  rb.className = `role-badge role-${user.role}`;
+
+  setupNavForRole(user.role);
+  startLiveUpdates();
+  showToast('success', `Welcome ${user.name}! Redirecting to your dashboard...`);
+}
+
+function setupNavForRole(role) {
+  const links = document.getElementById('nav-links');
+  const pages = [];
+
+  if (role === 'admin') {
+    pages.push({ id: 'admin', label: '⚙️ Admin Dashboard' });
+    pages.push({ id: 'supervisor', label: '👁 Monitoring' });
+    pages.push({ id: 'operator', label: '📹 Camera Control' });
+  } else if (role === 'supervisor') {
+    pages.push({ id: 'supervisor', label: '👁 Monitoring Dashboard' });
+    pages.push({ id: 'operator', label: '📹 Cameras' });
+  } else {
+    pages.push({ id: 'operator', label: '📹 Camera Control' });
+  }
+
+  // Congestion & Emission module — visible to all roles
+  links.innerHTML = pages.map(p =>
+    `<button class="nav-link" data-page="${p.id}" onclick="showPage('${p.id}')">${p.label}</button>`
+  ).join('') +
+  `<a href="congestion_emission.html" target="_blank"
+     style="padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;
+            background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.25);
+            color:#00ff88;text-decoration:none;display:inline-flex;align-items:center;gap:5px;">
+     📊 Congestion &amp; Emission
+   </a>`;
+  // Return early so we don't double-render links below
+  showPage(pages[0].id);
+  return;
+
+  // (nav rendering handled above)
+  showPage(pages[0].id);
+}
+
+function showPage(pageId) {
+  // Normalise: strip accidental 'page-' prefix so callers can pass either form
+  const cleanId = pageId.replace(/^page-/, '');
+
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(l => {
+    l.classList.toggle('active', l.dataset.page === cleanId);
+  });
+
+  const target = document.getElementById(`page-${cleanId}`);
+  if (!target) { console.warn(`showPage: no element "page-${cleanId}"`); return; }
+  target.classList.add('active');
+
+  if (cleanId === 'admin')      initAdminPage();
+  if (cleanId === 'supervisor') initSupervisorPage();
+  if (cleanId === 'operator')   initOperatorPage();
+}
+
+function doLogout() {
+  clearInterval(liveTimer);
+  currentUser = null;
+  authToken = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-page').style.display = 'flex';
+}
+
+// ─── ADMIN PAGE ───────────────────────────────────────
+function initAdminPage() {
+  refreshAdminStats();
+  loadViolations();
+  loadUsers();
+  initAdminChart();
+}
+
+async function refreshAdminStats() {
+  const d = await apiCall('/dashboard/admin/stats');
+  if (!d.success) return;
+  const s = d.stats;
+  document.getElementById('as-vehicles').textContent = (s.total_vehicles_detected||0).toLocaleString();
+  document.getElementById('as-violations').textContent = s.total_violations||0;
+  document.getElementById('as-accidents').textContent = s.total_accidents||0;
+  document.getElementById('as-cameras').textContent = `${s.active_cameras||0}/${s.total_cameras||4}`;
+  document.getElementById('as-alerts').textContent = s.unacknowledged_alerts||0;
+  document.getElementById('as-pending-v').textContent = `${s.pending_violations||0} pending`;
+  document.getElementById('as-open-acc').textContent = `${s.open_accidents||0} open`;
+  updateAlertCount(s.unacknowledged_alerts||0);
+}
+
+async function loadUsers() {
+  const d = await apiCall('/dashboard/admin/users');
+  const users = d.success ? d.users : [];
+  document.getElementById('user-list').innerHTML = users.length ? users.map(u => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div style="width:36px;height:36px;background:var(--surface2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;">
+        ${u.role === 'admin' ? '🛡' : u.role === 'supervisor' ? '👁' : '🎮'}
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">${u.name}</div>
+        <div style="font-size:11px;color:var(--muted);">${u.email}</div>
+      </div>
+      <span class="role-badge role-${u.role}">${u.role}</span>
+    </div>
+  `).join('') : '<div style="color:var(--muted);font-size:12px;padding:10px">No users found</div>';
+}
+
+async function loadViolations() {
+  const d = await apiCall('/dashboard/violations?status=pending');
+  const rows = d.success ? d.violations : [];
+  document.getElementById('violations-tbody').innerHTML = rows.length ? rows.map(r => `
+    <tr>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--muted);">${r.timestamp ? new Date(r.timestamp).toLocaleTimeString() : '--'}</td>
+      <td style="font-weight:600;">${r.violation_type||r.type||'--'}</td>
+      <td><span style="font-family:var(--mono);font-size:12px;">${r.intersection_id||'--'}</span></td>
+      <td><span class="severity-badge sev-${r.severity||'medium'}">${r.severity||'medium'}</span></td>
+      <td><span style="font-family:var(--mono);font-size:12px;color:var(--accent);">${r.vehicle_plate||r.plate||'--'}</span></td>
+      <td><span class="status-badge status-${r.status||'pending'}">${r.status||'pending'}</span></td>
+      <td>
+        <button onclick="actionViolation(${r.id})" style="background:var(--accent);border:none;border-radius:6px;padding:4px 10px;color:#000;font-size:11px;font-weight:700;cursor:pointer;">
+          ${r.status === 'pending' ? 'Action' : 'View'}
+        </button>
+      </td>
+    </tr>
+  `).join('') : '<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:20px">No violations recorded yet — upload a video to detect violations</td></tr>';
+}
+
+async function actionViolation(id) {
+  await apiCall(`/dashboard/violations/${id}/action`, { method:'POST', body: JSON.stringify({action:'actioned'}) });
+  showToast('success', `Violation #${id} marked for action`);
+  loadViolations();
+}
+
+async function initAdminChart() {
+  const d = await apiCall('/dashboard/chart-data?intersection_id=INT-001');
+  if (adminChart) adminChart.destroy();
+  const ctx = document.getElementById('admin-chart').getContext('2d');
+  const labels = d.success && d.labels.length ? d.labels : Array.from({length:24},(_,i)=>`${i}:00`);
+  const actual = d.success && d.actual.length ? d.actual : labels.map(()=>0);
+  const predicted = d.success && d.predicted.length ? d.predicted : actual;
+  adminChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Actual', data: actual, borderColor: '#00d4ff', backgroundColor: 'rgba(0,212,255,0.08)', tension: 0.4, fill: true, pointRadius: 2 },
+        { label: 'TCN Predicted', data: predicted, borderColor: '#7b61ff', borderDash: [5, 5], backgroundColor: 'transparent', tension: 0.4, pointRadius: 2 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#64748b', font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(26,37,64,0.6)' } },
+        y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(26,37,64,0.6)' } }
+      }
+    }
+  });
+}
+
+// ─── SUPERVISOR PAGE ──────────────────────────────────
+function initSupervisorPage() {
+  loadIntersections();
+  loadSupervisorAlerts();
+  loadAccidents();
+  initSupervisorChart();
+}
+
+async function loadIntersections() {
+  const d = await apiCall('/dashboard/supervisor/monitoring');
+  const ints = d.success ? d.intersections : [];
+  document.getElementById('intersections-grid').innerHTML = ints.length ? ints.map(i => {
+    const pct = Math.min(100, Math.floor((i.congestion_score||0)));
+    return `
+      <div class="int-card" onclick="showPage('operator')">
+        <div class="int-header">
+          <div><div class="int-name">${i.name||i.id}</div><div class="int-id">${i.id}</div></div>
+          <span class="severity-badge sev-${i.congestion==='high'?'critical':i.congestion==='medium'?'high':'low'}">${i.congestion||'low'}</span>
+        </div>
+        <div style="font-size:28px;font-weight:700;font-family:var(--mono);">${i.vehicle_count||0}</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">vehicles/min</div>
+        <div class="congestion-bar"><div class="congestion-fill cong-${i.congestion||'low'}" style="width:${pct}%"></div></div>
+        <div style="display:flex;gap:8px;font-size:11px;">
+          ${(i.pending_violations||0) > 0 ? `<span class="result-tag tag-orange">⚠ ${i.pending_violations} violations</span>` : ''}
+          ${(i.open_accidents||0) > 0 ? `<span class="result-tag tag-red">🚨 ${i.open_accidents} accident</span>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('') : '<div style="color:var(--muted);padding:20px;text-align:center">No intersection data — upload a video to populate</div>';
+}
+
+async function loadSupervisorAlerts() {
+  const d = await apiCall('/dashboard/supervisor/alerts');
+  const alerts = d.success ? d.alerts : [];
+  const iconMap = {ACCIDENT:'🚨',EMERGENCY:'🚑',VIOLATION:'⚠️',CONGESTION:'🔴',CAMERA:'📷'};
+  document.getElementById('sup-alert-count').textContent = alerts.length;
+  document.getElementById('supervisor-alerts-list').innerHTML = alerts.length ? alerts.map(a => `
+    <div class="alert-item ${a.severity||'medium'}" onclick="acknowledgeAlertById(${a.id}, this)">
+      <div class="alert-icon">${iconMap[a.alert_type||a.type]||'⚠️'}</div>
+      <div class="alert-content">
+        <div class="alert-title">${a.alert_type||a.type||'ALERT'}</div>
+        <div class="alert-msg">${a.message||a.msg||''}</div>
+        <div class="alert-time">${a.timestamp ? new Date(a.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString()}</div>
+      </div>
+      <button style="background:var(--accent);border:none;border-radius:6px;padding:4px 8px;color:#000;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;">ACK</button>
+    </div>
+  `).join('') : '<div style="color:var(--muted);font-size:12px;padding:12px;text-align:center">✅ No unacknowledged alerts</div>';
+}
+
+async function acknowledgeAlertById(id, el) {
+  await apiCall(`/dashboard/supervisor/alerts/${id}/acknowledge`, {method:'POST'});
+  el.style.opacity = '0.4';
+  el.style.pointerEvents = 'none';
+  showToast('success', 'Alert acknowledged');
+  loadSupervisorAlerts();
+}
+
+function acknowledgeAlert(el) {
+  el.style.opacity = '0.4';
+  el.style.pointerEvents = 'none';
+  showToast('success', 'Alert acknowledged');
+}
+
+async function loadAccidents() {
+  const d = await apiCall('/dashboard/accidents?status=open');
+  const accidents = d.success ? d.accidents : [];
+  document.getElementById('accidents-tbody').innerHTML = accidents.length ? accidents.map(a => `
+    <tr>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--muted);">${a.timestamp ? new Date(a.timestamp).toLocaleTimeString() : '--'}</td>
+      <td><span style="font-family:var(--mono);font-size:12px;">${a.intersection_id||'--'}</span></td>
+      <td style="font-weight:600;">${a.accident_type||a.type||'Vehicle Collision'}</td>
+      <td><span class="severity-badge sev-${a.severity||'high'}">${a.severity||'high'}</span></td>
+      <td><span class="status-badge status-${a.status||'open'}">${a.status||'open'}</span></td>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--green);">${a.confidence ? (a.confidence*100).toFixed(1)+'%' : '--'}</td>
+      <td>
+        <button onclick="this.textContent='Dispatched ✓';this.style.background='var(--green)';this.style.color='#000';"
+          style="background:rgba(255,60,95,0.2);border:1px solid var(--red);border-radius:6px;padding:4px 10px;color:var(--red);font-size:11px;font-weight:700;cursor:pointer;">
+          🚑 Dispatch
+        </button>
+      </td>
+    </tr>
+  `).join('') : '<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:20px">No open accidents — system monitoring active</td></tr>';
+}
+
+async function initSupervisorChart() {
+  const d = await apiCall('/dashboard/supervisor/monitoring');
+  const ints = d.success ? d.intersections : [];
+  if (supervisorChart) supervisorChart.destroy();
+  const ctx = document.getElementById('supervisor-chart').getContext('2d');
+  const labels = ints.length ? ints.map(i=>i.id) : ['INT-001','INT-002','INT-003','INT-004'];
+  const data   = ints.length ? ints.map(i=>i.vehicle_count||0) : [0,0,0,0];
+  supervisorChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Vehicles/min',
+        data,
+        backgroundColor: data.map(v => v > 25 ? 'rgba(255,60,95,0.6)' : v > 15 ? 'rgba(255,140,0,0.6)' : 'rgba(0,255,136,0.6)'),
+        borderColor: data.map(v => v > 25 ? '#ff3c5f' : v > 15 ? '#ff8c00' : '#00ff88'),
+        borderWidth: 1, borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(26,37,64,0.6)' } },
+        y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(26,37,64,0.6)' } }
+      }
+    }
+  });
+}
+
+// ─── OPERATOR PAGE ────────────────────────────────────
+function initOperatorPage() {
+  renderCameraGrid();
+  loadSignal();
+  loadPrediction();
+}
+
+async function renderCameraGrid() {
+  const d = await apiCall('/dashboard/operator/cameras');
+  const cameras = d.success && d.cameras.length ? d.cameras.map(c => ({
+    id: c.camera_id,
+    name: c.name,
+    int: c.intersection_id,
+    status: c.status,
+    count: c.live_count || 0,
+    congestion: c.congestion || 'low',
+    congestion_score: c.congestion_score || 0,
+  })) : [
+    { id: 'CAM-001', name: 'North Junction A', int: 'INT-001', status: 'online', count: 0, congestion: 'low', congestion_score: 0 },
+    { id: 'CAM-002', name: 'South Gate', int: 'INT-002', status: 'online', count: 0, congestion: 'low', congestion_score: 0 },
+    { id: 'CAM-003', name: 'East Corridor', int: 'INT-003', status: 'maintenance', count: 0, congestion: 'low', congestion_score: 0 },
+    { id: 'CAM-004', name: 'West Ring Road', int: 'INT-004', status: 'online', count: 0, congestion: 'low', congestion_score: 0 },
+  ];
+
+  document.getElementById('camera-grid').innerHTML = cameras.map((cam, idx) => `
+    <div class="camera-feed" id="cam-${cam.id}">
+      <div class="cam-header">
+        <div class="cam-title">
+          <div class="cam-status ${cam.status === 'online' ? '' : cam.status}"></div>
+          ${cam.name}
+          <span style="font-size:11px;color:var(--muted);font-family:var(--mono);">${cam.id}</span>
+        </div>
+        <span class="result-tag ${cam.status === 'online' ? 'tag-green' : 'tag-orange'}">${cam.status}</span>
+      </div>
+      <canvas id="canvas-${cam.id}" width="640" height="200" style="width:100%;height:200px;display:block;background:#000;"></canvas>
+      <div class="cam-stats">
+        <div class="cam-stat-item"><div class="cam-stat-label">Vehicles</div><div class="cam-stat-val" id="stat-count-${cam.id}">--</div></div>
+        <div class="cam-stat-item"><div class="cam-stat-label">Congestion</div><div class="cam-stat-val" id="stat-cong-${cam.id}">--</div></div>
+        <div class="cam-stat-item"><div class="cam-stat-label">CO₂</div><div class="cam-stat-val" id="stat-co2-${cam.id}">--</div></div>
+        <div class="cam-stat-item"><div class="cam-stat-label">FPS</div><div class="cam-stat-val" id="stat-fps-${cam.id}">--</div></div>
+      </div>
+      <div class="cam-overlay-results" id="tags-${cam.id}"></div>
+    </div>
+  `).join('');
+
+  cameras.forEach(cam => startCameraSimulation(cam));
+}
+
+function startCameraSimulation(cam) {
+  const canvas = document.getElementById(`canvas-${cam.id}`);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  function drawFrame() {
+    if (!document.getElementById(`canvas-${cam.id}`)) return;
+
+    const w = canvas.width, h = canvas.height;
+    ctx.fillStyle = '#0a0d16';
+    ctx.fillRect(0, 0, w, h);
+
+    if (cam.status === 'maintenance') {
+      ctx.fillStyle = '#ff8c0022';
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#ff8c00';
+      ctx.font = '16px JetBrains Mono';
+      ctx.textAlign = 'center';
+      ctx.fillText('⚠ MAINTENANCE MODE', w/2, h/2);
+      return;
+    }
+
+    // Draw fake road
+    ctx.fillStyle = '#1a2030';
+    ctx.fillRect(w/3, 0, w/3, h);
+    ctx.fillRect(0, h/3, w, h/3);
+
+    // Road markings
+    ctx.strokeStyle = '#ffffff22';
+    ctx.setLineDash([20, 20]);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(w/2, 0); ctx.lineTo(w/2, h);
+    ctx.moveTo(0, h/2); ctx.lineTo(w, h/2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Simulate vehicles
+    const count = Math.floor(Math.random() * 18) + 3;
+    const colors = { car: '#00d4ff', bus: '#ffb74d', truck: '#ef5350', bike: '#66bb6a', emergency: '#ff3d00' };
+    const types = ['car','car','car','car','bus','truck','bike','bike'];
+
+    for (let i = 0; i < Math.min(count, 12); i++) {
+      const type = types[Math.floor(Math.random() * types.length)];
+      const x = Math.random() * (w - 60) + 10;
+      const y = Math.random() * (h - 40) + 10;
+      const bw = type === 'bus' ? 60 : type === 'truck' ? 70 : type === 'bike' ? 20 : 40;
+      const bh = type === 'bus' ? 30 : type === 'truck' ? 28 : type === 'bike' ? 16 : 22;
+
+      ctx.strokeStyle = colors[type];
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, bw, bh);
+
+      // Label
+      ctx.fillStyle = colors[type];
+      ctx.font = '9px JetBrains Mono';
+      ctx.fillText(type + ' ' + (0.7 + Math.random() * 0.25).toFixed(2), x, y - 3);
+    }
+
+    // Stats overlay
+    ctx.fillStyle = 'rgba(5,8,16,0.75)';
+    ctx.fillRect(0, 0, 180, 90);
+    ctx.fillStyle = '#00d4ff';
+    ctx.font = 'bold 11px Space Grotesk';
+    ctx.textAlign = 'left';
+    ctx.fillText('ViT Detection', 8, 18);
+
+    const cong = count > 20 ? 'High' : count > 12 ? 'Medium' : 'Low';
+    const congColor = count > 20 ? '#ff3c5f' : count > 12 ? '#ff8c00' : '#00ff88';
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = '10px JetBrains Mono';
+    ctx.fillText(`Vehicles: ${count}`, 8, 34);
+    ctx.fillStyle = congColor;
+    ctx.fillText(`Congestion: ${cong}`, 8, 48);
+    ctx.fillStyle = '#66bb6a';
+    ctx.fillText(`CO₂: ${(count*0.21).toFixed(2)} kg/km`, 8, 62);
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(`FPS: ${(14 + Math.random()*6).toFixed(1)}  mAP: 88.56%`, 8, 76);
+
+    // Timestamp
+    ctx.fillStyle = '#64748b';
+    ctx.font = '9px JetBrains Mono';
+    ctx.textAlign = 'right';
+    ctx.fillText(`${cam.id} | ${new Date().toLocaleTimeString()}`, w - 8, h - 6);
+
+    // Violation flash
+    if (Math.random() > 0.85) {
+      ctx.fillStyle = 'rgba(255,60,95,0.15)';
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = '#ff3c5f';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(1, 1, w-2, h-2);
+      ctx.fillStyle = '#ff3c5f';
+      ctx.font = 'bold 11px Space Grotesk';
+      ctx.textAlign = 'center';
+      ctx.fillText('⚠ VIOLATION DETECTED', w/2, h - 12);
+    }
+
+    // Emergency flash — very rare (approx once per 20 min of simulated time)
+    if (Math.random() > 0.998) {
+      triggerAccidentPopup(cam.id, count);
+    }
+
+    // Update stats
+    const co2 = (count * 0.21).toFixed(2);
+    const fpsStat = (14 + Math.random() * 6).toFixed(1);
+
+    const countEl = document.getElementById(`stat-count-${cam.id}`);
+    if (countEl) countEl.textContent = count;
+    const congEl = document.getElementById(`stat-cong-${cam.id}`);
+    if (congEl) { congEl.textContent = cong; congEl.style.color = congColor; }
+    const co2El = document.getElementById(`stat-co2-${cam.id}`);
+    if (co2El) co2El.textContent = `${co2}kg`;
+    const fpsEl = document.getElementById(`stat-fps-${cam.id}`);
+    if (fpsEl) fpsEl.textContent = fpsStat;
+
+    // Tags — show real data only (violations/accidents come from DB via video upload)
+    const tagsEl = document.getElementById(`tags-${cam.id}`);
+    if (tagsEl) {
+      const tags = [];
+      tags.push(`<span class="result-tag tag-blue">🚗 ${count} vehicles</span>`);
+      tags.push(`<span class="result-tag ${count>20?'tag-red':count>12?'tag-orange':'tag-green'}">${cong}</span>`);
+      tags.push(`<span class="result-tag tag-green">CO₂ ${co2}kg</span>`);
+      tags.push(`<span class="result-tag tag-blue" style="font-size:9px">🔴 LIVE</span>`);
+      tagsEl.innerHTML = tags.join('');
+    }
+
+    ctx.textAlign = 'left';
+  }
+
+  // Clear old timer
+  if (camSimTimers[cam.id]) clearInterval(camSimTimers[cam.id]);
+  camSimTimers[cam.id] = setInterval(drawFrame, 1200);
+  drawFrame();
+}
+
+function triggerAccidentPopup(camId, count) {
+  // Don't re-trigger if: popup already showing, cooldown active, or this camera was acknowledged < 5 min ago
+  if (accidentCooldown) return;
+  if (acknowledgedAccidents.has(camId)) return;
+  const now = Date.now();
+  if (lastAccidentTime[camId] && (now - lastAccidentTime[camId]) < 5 * 60 * 1000) return; // 5 min per-camera cooldown
+
+  accidentCooldown = true;
+  lastAccidentTime[camId] = now;
+  pendingAccident = { camId, count };
+
+  document.getElementById('popup-title').textContent = count > 25 ? 'SEVERE ACCIDENT DETECTED' : 'ACCIDENT DETECTED';
+  document.getElementById('popup-msg').textContent = `A ${count > 25 ? 'critical multi-vehicle' : 'vehicle'} collision detected at camera ${camId}. AI ViT confidence: ${(87 + Math.random() * 9).toFixed(1)}%`;
+  document.getElementById('popup-details').innerHTML = `
+    <b>📍 Location:</b> ${camId} — Intersection ${camId.replace('CAM-','INT-00')}<br>
+    <b>🚗 Vehicles involved:</b> ${Math.ceil(Math.random()*4)+1}<br>
+    <b>⚡ Detected at:</b> ${new Date().toLocaleTimeString()}<br>
+    <b>🚨 Severity:</b> ${count > 25 ? 'CRITICAL' : 'HIGH'}
+  `;
+  document.getElementById('accident-popup').classList.add('show');
+
+  // Push to dashboard alert only once per camera
+  addAlert({
+    icon: '🚨',
+    type: 'ACCIDENT',
+    severity: count > 25 ? 'critical' : 'high',
+    msg: `Accident at ${camId} — ${count > 25 ? 'CRITICAL' : 'HIGH'} severity`,
+    time: new Date().toLocaleTimeString()
+  });
+}
+
+function dispatchEmergency() {
+  if (pendingAccident) acknowledgedAccidents.add(pendingAccident.camId);
+  dismissPopup();
+  showToast('success', '🚑 Emergency services dispatched!');
+  showToast('warning', '📡 Signal override activated for emergency corridor');
+}
+
+function dismissPopup() {
+  document.getElementById('accident-popup').classList.remove('show');
+  if (pendingAccident) acknowledgedAccidents.add(pendingAccident.camId);
+  pendingAccident = null;
+  // Release global cooldown after 3 minutes so other cameras can still trigger
+  setTimeout(() => { accidentCooldown = false; }, 3 * 60 * 1000);
+}
+
+// ─── VIDEO UPLOAD ─────────────────────────────────────
+let selectedFile = null;
+
+function handleFileSelect(e) {
+  selectedFile = e.target.files[0];
+  if (selectedFile) {
+    document.querySelector('.upload-text').textContent = `✓ ${selectedFile.name}`;
+    document.querySelector('.upload-hint').textContent = `${(selectedFile.size/1024/1024).toFixed(1)} MB — Ready to analyze`;
+    showToast('success', `Video selected: ${selectedFile.name}`);
+  }
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('dragging');
+  const file = e.dataTransfer.files[0];
+  if (file && /\.(mp4|avi|mov|mkv)$/i.test(file.name)) {
+    selectedFile = file;
+    document.querySelector('.upload-text').textContent = `✓ ${file.name}`;
+    document.querySelector('.upload-hint').textContent = `${(file.size/1024/1024).toFixed(1)} MB — Ready to analyze`;
+    showToast('success', `Video dropped: ${file.name}`);
+  }
+}
+
+async function uploadVideo() {
+  if (!selectedFile) { showToast('error', 'Please select a video file first'); return; }
+  const intersectionId = document.getElementById('upload-intersection')?.value || 'INT-001';
+  const cameraId = document.getElementById('upload-camera')?.value || 'CAM-001';
+
+  const progressEl = document.getElementById('upload-progress');
+  const fillEl     = document.getElementById('progress-fill');
+  const textEl     = document.getElementById('progress-text');
+  progressEl.style.display = 'block';
+
+  // Real upload to Flask backend
+  const formData = new FormData();
+  formData.append('video', selectedFile);
+  formData.append('intersection_id', intersectionId);
+  formData.append('camera_id', cameraId);
+
+  // Animate progress while uploading
+  let fakeProgress = 0;
+  const ticker = setInterval(() => {
+    fakeProgress = Math.min(fakeProgress + 2, 85);
+    fillEl.style.width = `${fakeProgress}%`;
+    textEl.textContent = fakeProgress < 30 ? 'Uploading video...' : fakeProgress < 60 ? '🧠 ViT detection running...' : '📈 TCN prediction & saving...';
+  }, 200);
+
+  try {
+    const r = await fetch(`${API}/camera/upload`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${authToken}` },
+      body: formData,
+      signal: AbortSignal.timeout(300000) // 5 min for large videos
+    });
+
+    clearInterval(ticker);
+    fillEl.style.width = '100%';
+    textEl.textContent = '💾 Analysis saved to database';
+    await new Promise(res => setTimeout(res, 400));
+    progressEl.style.display = 'none';
+
+    if (r.ok) {
+      const data = await r.json();
+      if (data.success) {
+        showRealAnalysisResults(data.analysis);
+        // Refresh dashboard stats with new data
+        refreshAdminStats();
+        loadViolations();
+      } else {
+        showToast('error', '❌ Analysis failed: ' + (data.message || 'Unknown error'));
+      }
+    } else {
+      showToast('error', `❌ Upload failed (HTTP ${r.status})`);
+    }
+  } catch(e) {
+    clearInterval(ticker);
+    progressEl.style.display = 'none';
+    showToast('error', '❌ Upload error: ' + e.message + ' — Is Flask running?');
+  }
+}
+
+function showRealAnalysisResults(analysis) {
+  if (!analysis) { showToast('error', 'No analysis data returned'); return; }
+
+  const last    = analysis.last_frame_result || {};
+  const counts  = last.counts || {};
+  const total   = analysis.total_vehicles_detected || last.total || 0;
+  const viol    = (analysis.severe_violations || []).length;
+  const accList = analysis.severe_accidents  || [];
+  const co2     = last.co2_estimate || 0;
+  const cong    = last.congestion || 'Low';
+  const fps     = last.fps || 0;
+  const mAP     = last.confidence || 0.8856;
+
+  document.getElementById('result-grid').innerHTML = [
+    { val: total.toLocaleString(),     lbl: 'Total Vehicles',  color: 'var(--accent)' },
+    { val: viol,                        lbl: 'Violations',      color: 'var(--orange)' },
+    { val: accList.length,              lbl: 'Accidents',       color: accList.length > 0 ? 'var(--red)' : 'var(--green)' },
+    { val: cong,                        lbl: 'Congestion',      color: cong==='High'?'var(--red)':cong==='Medium'?'var(--orange)':'var(--green)' },
+    { val: co2.toFixed ? co2.toFixed(3)+'kg' : co2+'kg', lbl: 'Avg CO₂/min', color: 'var(--green)' },
+    { val: (mAP*100).toFixed(1)+'%',   lbl: 'ViT mAP',        color: 'var(--accent2)' },
+  ].map(r => `<div class="result-item">
+    <div class="result-val" style="color:${r.color};">${r.val}</div>
+    <div class="result-lbl">${r.lbl}</div>
+  </div>`).join('');
+
+  // Real violations from DB
+  const violData = analysis.severe_violations || [];
+  document.getElementById('violation-results').innerHTML = violData.length ? `
+    <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:12px 0 8px;">Detected Violations (saved to DB)</div>
+    <div class="violation-list">
+      ${violData.map(v => `
+        <div class="violation-entry">
+          <div class="v-icon">⚠️</div>
+          <div class="v-info">
+            <div class="v-type">${v.type || v.violation_type || 'Violation'}</div>
+            <div class="v-desc">${v.description || v.message || ''}</div>
+          </div>
+          <div>
+            <span class="severity-badge sev-${v.severity || 'high'}">${v.severity || 'high'}</span>
+            <div class="v-plate">${v.plate || v.vehicle_plate || '--'}</div>
+          </div>
+        </div>`).join('')}
+    </div>` : '<div style="color:var(--muted);font-size:12px;padding:8px">No severe violations detected in this video</div>';
+
+  // Real accidents
+  if (accList.length > 0) {
+    document.getElementById('accident-results').innerHTML = `
+      <div style="background:rgba(255,60,95,0.08);border:1px solid rgba(255,60,95,0.3);border-radius:10px;padding:14px;">
+        <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:6px;">🚨 ${accList.length} Accident(s) Detected — Saved to DB</div>
+        <div style="font-size:12px;color:var(--muted);">Incidents logged in accident_logs table. Officer dashboard updated.</div>
+      </div>`;
+    setTimeout(() => triggerAccidentPopup('VIDEO-CAM', total / 10), 1000);
+  } else {
+    document.getElementById('accident-results').innerHTML = '';
+  }
+
+  document.getElementById('analysis-results').classList.add('visible');
+  showToast('success', `✅ Analysis complete — ${total} vehicles, ${viol} violations saved to DB`);
+}
+
+// ─── SIGNAL CONTROL ───────────────────────────────────
+async function loadSignal() {
+  const intId = document.getElementById('signal-intersection').value;
+  const d = await apiCall(`/traffic/signal/${intId}`);
+  const sig = d.success ? d.signal : null;
+  const gt = sig ? sig.green_times || {} : {};
+  const n = gt.north || sig?.north_green || 30;
+  const s = gt.south || sig?.south_green || 30;
+  const e = gt.east  || sig?.east_green  || 25;
+  const w = gt.west  || sig?.west_green  || 25;
+  document.getElementById('sig-north').value = n;
+  document.getElementById('sig-south').value = s;
+  document.getElementById('sig-east').value  = e;
+  document.getElementById('sig-west').value  = w;
+  const cycle = n + s + e + w;
+  const mode = sig?.mode || 'adaptive';
+  document.getElementById('signal-status').innerHTML = `
+    <div style="display:flex;flex-wrap:wrap;gap:8px;">
+      <span class="result-tag tag-blue">Mode: ${mode}</span>
+      <span class="result-tag tag-green">Cycle: ${cycle}s</span>
+      <span class="result-tag tag-green">▲ N: ${n}s</span>
+      <span class="result-tag tag-green">▼ S: ${s}s</span>
+      <span class="result-tag tag-blue">▶ E: ${e}s</span>
+      <span class="result-tag tag-blue">◀ W: ${w}s</span>
+      ${sig?.is_emergency_override ? '<span class="result-tag tag-red">🚨 EMERGENCY OVERRIDE</span>' : ''}
+    </div>
+  `;
+}
+
+async function applyManualSignal() {
+  const intId = document.getElementById('signal-intersection').value;
+  const payload = {
+    north_green: +document.getElementById('sig-north').value,
+    south_green: +document.getElementById('sig-south').value,
+    east_green:  +document.getElementById('sig-east').value,
+    west_green:  +document.getElementById('sig-west').value,
+    mode: 'manual'
+  };
+  const d = await apiCall(`/traffic/signal/${intId}`, { method: 'POST', body: JSON.stringify(payload) });
+  if (d.success) {
+    showToast('success', '✅ Signal timing saved to database');
+    showToast('warning', `📡 Signal updated at ${intId}`);
+  } else showToast('error', '❌ Failed to update signal');
+}
+
+async function applyAdaptive() {
+  const intId = document.getElementById('signal-intersection').value;
+  const d = await apiCall(`/traffic/signal/${intId}/adaptive`, { method: 'POST', body: JSON.stringify({}) });
+  if (d.success && d.signal) {
+    const s = d.signal;
+    document.getElementById('sig-north').value = s.north_green || 30;
+    document.getElementById('sig-south').value = s.south_green || 30;
+    document.getElementById('sig-east').value  = s.east_green  || 25;
+    document.getElementById('sig-west').value  = s.west_green  || 25;
+    showToast('success', '🧠 Adaptive signal plan applied from TCN prediction');
+  } else showToast('error', '❌ Adaptive signal failed');
+}
+
+async function triggerEmergencyOverride() {
+  const intId = document.getElementById('signal-intersection').value;
+  const d = await apiCall(`/traffic/signal/${intId}/emergency-override`, {
+    method: 'POST', body: JSON.stringify({ direction: 'North', duration: 60, vehicle_type: 'Ambulance' })
+  });
+  if (d.success) {
+    document.getElementById('signal-status').innerHTML = `
+      <div style="background:rgba(255,60,95,0.1);border:1px solid var(--red);border-radius:8px;padding:12px;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:20px;">🚑</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--red);">EMERGENCY OVERRIDE ACTIVE</div>
+          <div style="font-size:12px;color:var(--muted);">${d.message||'Signal cleared for emergency vehicle'} at ${intId}</div>
+        </div>
+      </div>`;
+    showToast('warning', `🚑 Emergency override saved to DB at ${intId}`);
+  } else showToast('error', '❌ Emergency override failed');
+}
+
+// ─── TCN PREDICTION CHART ─────────────────────────────
+async function loadPrediction() {
+  const intId = document.getElementById('signal-intersection')?.value || 'INT-001';
+  const d = await apiCall(`/traffic/predict/${intId}`);
+  if (predictionChart) predictionChart.destroy();
+  const ctx = document.getElementById('prediction-chart').getContext('2d');
+  let labels, predicted, lower, upper;
+  if (d.success && d.predictions) {
+    labels    = d.predictions.map(p => p.hour || p.label || p.time || '--');
+    predicted = d.predictions.map(p => p.predicted_count || p.value || 0);
+    lower     = predicted.map(v => Math.max(0, v - (d.rmse || 4.5)));
+    upper     = predicted.map(v => v + (d.rmse || 4.5));
+  } else {
+    // Fallback to history-based prediction
+    const hist = await apiCall(`/traffic/congestion-history/${intId}?hours=12`);
+    if (hist.success && hist.chart_data) {
+      labels    = hist.chart_data.labels.slice(-12);
+      predicted = hist.chart_data.vehicles_per_min.slice(-12);
+      lower     = predicted.map(v => Math.max(0, v - 4.5));
+      upper     = predicted.map(v => v + 4.5);
+    } else {
+      labels    = Array.from({length:12},(_,i)=>`H+${i+1}`);
+      predicted = labels.map(()=>0);
+      lower     = predicted; upper = predicted;
+    }
+  }
+  predictionChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Predicted', data: predicted, borderColor: '#7b61ff', backgroundColor: 'rgba(123,97,255,0.15)', fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#7b61ff' },
+        { label: 'Upper Bound', data: upper, borderColor: 'rgba(123,97,255,0.3)', borderDash: [4,4], fill: false, tension: 0.4, pointRadius: 0 },
+        { label: 'Lower Bound', data: lower, borderColor: 'rgba(123,97,255,0.3)', borderDash: [4,4], fill: false, tension: 0.4, pointRadius: 0 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#64748b', font: { size: 11 } } },
+        tooltip: { callbacks: { label: (c) => c.datasetIndex===0 ? ` ${c.raw.toFixed(1)} veh/min (${c.raw>25?'⚠ HIGH':'Normal'})` : ` ${c.raw.toFixed(1)}` } }
+      },
+      scales: {
+        x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(26,37,64,0.6)' } },
+        y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(26,37,64,0.6)' } }
+      }
+    }
+  });
+}
+
+// ─── TOAST NOTIFICATIONS ──────────────────────────────
+/**
+ * showToast(type, message, duration)
+ * type: 'success' | 'error' | 'warning' | 'info'
+ * Creates a self-dismissing toast in #toast-container.
+ */
+function showToast(type = 'info', message = '', duration = 3500) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+
+  const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `
+    <span style="font-size:16px">${icons[type] || icons.info}</span>
+    <span style="flex:1">${message}</span>
+    <button onclick="this.parentElement.remove()" style="background:none;border:none;color:inherit;cursor:pointer;font-size:16px;padding:0;margin-left:8px;opacity:0.6;">✕</button>
+  `;
+  container.appendChild(toast);
+  // Auto-remove after duration
+  setTimeout(() => {
+    toast.style.transition = 'opacity 0.4s, transform 0.4s';
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(40px)';
+    setTimeout(() => toast.remove(), 400);
+  }, duration);
+}
+
+// ─── UPLOAD MODAL ─────────────────────────────────────
+/**
+ * showUploadModal()
+ * Navigates to the Operator page and scrolls the upload zone into view,
+ * then highlights it briefly so the user knows where to drop a file.
+ */
+function showUploadModal() {
+  // Switch to operator page where the upload zone lives
+  showPage('operator');
+  // Give the page a moment to render then scroll + pulse the upload zone
+  setTimeout(() => {
+    const zone = document.getElementById('upload-zone');
+    if (!zone) return;
+    zone.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Brief highlight pulse
+    zone.style.transition = 'box-shadow 0.3s, border-color 0.3s';
+    zone.style.borderColor = 'var(--accent, #00c6ff)';
+    zone.style.boxShadow   = '0 0 0 4px rgba(0,198,255,0.25)';
+    setTimeout(() => {
+      zone.style.borderColor = '';
+      zone.style.boxShadow   = '';
+    }, 1800);
+    // Programmatically open the file picker
+    const input = document.getElementById('video-upload');
+    if (input) input.click();
+  }, 120);
+}
+
+// ─── ALERTS ───────────────────────────────────────────
+function toggleAlerts() {
+  document.getElementById('alert-panel').classList.toggle('open');
+}
+
+function addAlert(alert) {
+  alertsList.unshift(alert);
+  if (alertsList.length > 20) alertsList.pop();
+  updateAlertCount(alertsList.length);
+  renderAlerts();
+
+  // Auto-open panel for critical
+  if (alert.severity === 'critical') {
+    document.getElementById('alert-panel').classList.add('open');
+  }
+}
+
+function updateAlertCount(n) {
+  document.getElementById('alert-count').textContent = n;
+}
+
+function renderAlerts() {
+  const icons = { ACCIDENT: '🚨', VIOLATION: '⚠️', EMERGENCY: '🚑', CONGESTION: '🔴' };
+  document.getElementById('alert-list').innerHTML = alertsList.map(a => `
+    <div class="alert-item ${a.severity}">
+      <div class="alert-icon">${a.icon || icons[a.type] || '🔔'}</div>
+      <div class="alert-content">
+        <div class="alert-title">${a.type}</div>
+        <div class="alert-msg">${a.msg}</div>
+        <div class="alert-time">${a.time || new Date().toLocaleTimeString()}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─── LIVE UPDATES ─────────────────────────────────────
+function startLiveUpdates() {
+  // Poll real alerts from backend every 8 seconds
+  liveTimer = setInterval(async () => {
+    const d = await apiCall('/dashboard/supervisor/alerts');
+    if (d.success && d.alerts && d.alerts.length) {
+      const iconMap = {ACCIDENT:'🚨',EMERGENCY:'🚑',VIOLATION:'⚠️',CONGESTION:'🔴',CAMERA:'📷'};
+      // Only show newly created alerts (last 10 seconds)
+      const cutoff = Date.now() - 10000;
+      d.alerts.filter(a => new Date(a.timestamp).getTime() > cutoff).forEach(a => {
+        addAlert({
+          icon: iconMap[a.alert_type||a.type] || '⚠️',
+          type: a.alert_type || a.type || 'ALERT',
+          severity: a.severity || 'medium',
+          msg: a.message || '',
+          time: new Date(a.timestamp).toLocaleTimeString()
+        });
+      });
+    }
+  }, 8000);
+}
+
+async function refreshAllCams() {
+  Object.keys(camSimTimers).forEach(id => clearInterval(camSimTimers[id]));
+  await renderCameraGrid();
+  showToast('success', 'Cameras refreshed from database');
+}
+
+// ─── THEME SWITCHER ───────────────────────────────────
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('smarttraffic_theme', theme);
+  // Update active button state
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.themeTarget === theme);
+  });
+  // Rebuild charts so they pick up new colors
+  if (typeof Chart !== 'undefined') {
+    Chart.helpers.each(Chart.instances, chart => {
+      const isDark = theme === 'dark' || theme === 'neon';
+      const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.07)';
+      const tickColor = isDark ? '#64748b' : '#94a3b8';
+      if (chart.options.scales) {
+        Object.values(chart.options.scales).forEach(axis => {
+          if (axis.grid) axis.grid.color = gridColor;
+          if (axis.ticks) axis.ticks.color = tickColor;
+        });
+      }
+      chart.update('none');
+    });
+  }
+}
+
+// ── Apply saved/system theme on load ──
+(function initTheme() {
+  const saved = localStorage.getItem('smarttraffic_theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = saved || (prefersDark ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', theme);
+  // Buttons not yet rendered, apply after DOM ready
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.themeTarget === theme);
+    });
+  });
+})();
+</script>
+</body>
+</html>

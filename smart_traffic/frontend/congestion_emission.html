@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Congestion & Emission Analysis — SmartTraffic AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root,[data-theme="dark"]{--bg:#050810;--s1:#0a0f1e;--s2:#0f1628;--border:#1a2540;--cyan:#00d4ff;--purple:#7b61ff;--green:#00ff88;--red:#ff3c5f;--orange:#ff8c00;--yellow:#ffd600;--text:#e2e8f0;--muted:#64748b;--font:'Space Grotesk',sans-serif;--mono:'JetBrains Mono',monospace;--nav-bg:rgba(5,8,16,.97);--accent:var(--cyan)}
+[data-theme="light"]{--bg:#f0f4f8;--s1:#ffffff;--s2:#e8eef5;--border:#d0dae8;--cyan:#0284c7;--purple:#7c3aed;--green:#059669;--red:#dc2626;--orange:#d97706;--yellow:#ca8a04;--text:#0f172a;--muted:#64748b;--nav-bg:rgba(255,255,255,.97);--accent:var(--cyan)}
+[data-theme="neon"]{--bg:#000005;--s1:#060616;--s2:#0a0a20;--border:#1a003a;--cyan:#00ffff;--purple:#ff00ff;--green:#39ff14;--red:#ff2052;--orange:#ff6600;--yellow:#ffff00;--text:#f0f0ff;--muted:#6b5a8a;--nav-bg:rgba(0,0,5,.97);--accent:#ff00ff}
+[data-theme="light"] .card,[data-theme="light"] .section-card{background:var(--s1);border-color:var(--border);box-shadow:0 4px 20px rgba(0,0,0,.08)}
+[data-theme="light"] .nav{background:var(--nav-bg);box-shadow:0 1px 12px rgba(0,0,0,.1)}
+[data-theme="light"] .nav-tab.active{color:var(--cyan);background:rgba(2,132,199,.1)}
+[data-theme="light"] .stat-val{color:var(--cyan)}
+[data-theme="neon"] .card,[data-theme="neon"] .section-card{border-color:#ff00ff22;box-shadow:0 0 20px rgba(255,0,255,.08)}
+[data-theme="neon"] .nav{border-bottom-color:#ff00ff44}
+[data-theme="neon"] .nav-tab.active{color:var(--purple);background:rgba(255,0,255,.12)}
+[data-theme="neon"] .stat-val{text-shadow:0 0 10px var(--cyan)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
+.nav{height:58px;background:var(--nav-bg,rgba(5,8,16,.97));border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;position:sticky;top:0;z-index:900;backdrop-filter:blur(16px);flex-wrap:wrap}
+.nav-brand{font-size:15px;font-weight:700;color:var(--cyan);text-decoration:none}
+.nav-sep{color:var(--border)}
+.nav-tabs{display:flex;gap:3px;margin-left:8px}
+.nav-tab{padding:5px 12px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--muted);font-family:var(--font);transition:all .2s}
+.nav-tab:hover{color:var(--text);background:var(--s1)}
+.nav-tab.active{color:var(--cyan);background:rgba(0,212,255,.1)}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.live-pill{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--green);background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2);border-radius:20px;padding:4px 10px}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 1.2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.btn{padding:6px 13px;border-radius:8px;font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all .2s}
+.btn-cyan{background:rgba(0,212,255,.12);border:1px solid rgba(0,212,255,.3);color:var(--cyan)}
+.btn-cyan:hover{background:rgba(0,212,255,.22)}
+.btn-green{background:rgba(0,255,136,.12);border:1px solid rgba(0,255,136,.3);color:var(--green)}
+.btn-back{background:var(--s1);border:1px solid var(--border);color:var(--text)}
+.voice-btn{display:flex;align-items:center;gap:6px;background:linear-gradient(135deg,rgba(123,97,255,.2),rgba(0,212,255,.15));border:1px solid rgba(123,97,255,.4);border-radius:20px;padding:5px 13px;color:var(--purple);font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);transition:all .3s}
+.voice-btn.listening{background:linear-gradient(135deg,rgba(255,60,95,.25),rgba(255,140,0,.2));border-color:rgba(255,60,95,.5);color:var(--red);animation:vp 1s ease-in-out infinite}
+@keyframes vp{0%,100%{box-shadow:0 0 0 0 rgba(255,60,95,.3)}50%{box-shadow:0 0 0 8px rgba(255,60,95,0)}}
+.page{display:none;padding:18px 20px;max-width:1700px;margin:0 auto}
+.page.active{display:block}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--s1);border:1px solid var(--border);border-radius:13px;padding:16px 18px;position:relative;overflow:hidden;transition:transform .2s,border-color .2s}
+.kpi:hover{transform:translateY(-2px);border-color:rgba(0,212,255,.25)}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kpi.cc::after{background:linear-gradient(90deg,var(--cyan),var(--purple))}
+.kpi.cg::after{background:var(--green)}
+.kpi.cr::after{background:var(--red)}
+.kpi.co::after{background:var(--orange)}
+.kpi.cp::after{background:var(--purple)}
+.kpi.cy::after{background:var(--yellow)}
+.kpi-icon{font-size:20px;margin-bottom:5px}
+.kpi-val{font-size:24px;font-weight:700;font-family:var(--mono);line-height:1;margin-bottom:3px}
+.kpi-lbl{font-size:11px;color:var(--muted)}
+.kpi-sub{font-size:10px;margin-top:3px;font-family:var(--mono)}
+.kpi-sub.up{color:var(--green)}.kpi-sub.warn{color:var(--orange)}.kpi-sub.crit{color:var(--red)}
+.card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:18px}
+.card-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.grid-65{display:grid;grid-template-columns:1.7fr 1fr;gap:16px}
+.grid-56{display:grid;grid-template-columns:1fr 1.4fr;gap:16px}
+.cw{position:relative;height:220px}
+.cw.tall{height:260px}
+.c-meter-wrap{display:flex;flex-direction:column;align-items:center;padding:10px}
+.c-meter{position:relative;width:150px;height:75px}
+.c-meter-svg{width:100%;height:100%}
+.c-meter-val{position:absolute;bottom:0;left:0;right:0;text-align:center;font-size:30px;font-weight:700;font-family:var(--mono)}
+.c-meter-lbl{text-align:center;font-size:11px;color:var(--muted);margin-top:4px}
+.c-meter-status{text-align:center;font-size:13px;font-weight:700;margin-top:3px}
+.signal-strip{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.sig-light{flex:1;min-width:55px;padding:7px 4px;border-radius:7px;text-align:center;font-size:10px;font-weight:700;transition:all .4s}
+.sig-green{background:rgba(0,255,136,.15);color:var(--green);border:1px solid rgba(0,255,136,.3)}
+.sig-extend{background:rgba(0,212,255,.15);color:var(--cyan);border:1px solid rgba(0,212,255,.3)}
+.sig-reduce{background:rgba(255,214,0,.1);color:var(--yellow);border:1px solid rgba(255,214,0,.3)}
+#congestion-map{height:480px;border-radius:12px;overflow:hidden;border:1px solid #d0dae8;box-shadow:0 4px 20px rgba(0,0,0,.1)}
+.leaflet-container{background:#e8eef5 !important}
+.leaflet-popup-content-wrapper{border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.15)}
+.leaflet-popup-content{font-family:'Space Grotesk',sans-serif;font-size:13px;line-height:1.7;margin:10px 14px}
+.leaflet-control-zoom{border:none !important;box-shadow:0 2px 10px rgba(0,0,0,.15) !important}
+.leaflet-control-zoom a{border-radius:6px !important;color:#0f172a !important;font-weight:700}
+.heat-label{background:none;border:none;box-shadow:none}
+.map-layer-btn{padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:transparent;color:#64748b;font-family:'Space Grotesk',sans-serif;transition:all .2s;white-space:nowrap}
+.map-layer-btn.active{background:#0f172a;color:#fff}
+.map-layer-btn:hover:not(.active){background:#e2e8f0;color:#0f172a}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
+.alert-banner{display:none;background:rgba(255,60,95,.08);border:1px solid rgba(255,60,95,.4);border-left:4px solid var(--red);border-radius:10px;padding:12px 16px;margin-bottom:16px}
+.alert-banner.warn{background:rgba(255,140,0,.08);border-color:rgba(255,140,0,.4);border-left-color:var(--orange)}
+.alert-banner.show{display:flex;align-items:flex-start;gap:10px}
+.alert-icon{font-size:20px;flex-shrink:0}
+.alert-body h4{font-size:13px;font-weight:700;color:var(--red)}
+.alert-banner.warn .alert-body h4{color:var(--orange)}
+.alert-body p{font-size:12px;color:var(--muted);margin-top:2px}
+.alert-dismiss{margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;flex-shrink:0}
+.zone-item{display:flex;align-items:center;gap:10px;background:var(--s2);border-radius:9px;padding:10px 12px;border:1px solid var(--border);margin-bottom:8px}
+.zone-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.zone-info{flex:1}.zone-name{font-size:12px;font-weight:600}.zone-detail{font-size:10px;color:var(--muted);margin-top:1px}
+.zone-val{font-family:var(--mono);font-size:11px;font-weight:600;text-align:right}
+.tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px}
+.tag-green{background:rgba(0,255,136,.12);color:var(--green)}
+.tag-red{background:rgba(255,60,95,.12);color:var(--red)}
+.tag-orange{background:rgba(255,140,0,.12);color:var(--orange)}
+.tag-cyan{background:rgba(0,212,255,.12);color:var(--cyan)}
+.tag-purple{background:rgba(123,97,255,.12);color:var(--purple)}
+.int-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.int-card{background:var(--s2);border:1px solid var(--border);border-radius:11px;padding:12px;cursor:pointer;transition:all .2s}
+.int-card:hover,.int-card.sel{border-color:rgba(0,212,255,.4);background:var(--s1)}
+.int-card.sel::before{content:'';display:block;height:2px;background:var(--cyan);border-radius:2px;margin-bottom:8px}
+.cong-bar-wrap{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin:6px 0}
+.cong-bar-fill{height:100%;border-radius:2px;transition:width .5s}
+.env-grade{width:56px;height:56px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;font-family:var(--mono)}
+.gA{background:rgba(0,255,136,.15);color:var(--green)}.gB{background:rgba(0,212,255,.15);color:var(--cyan)}
+.gC{background:rgba(255,214,0,.1);color:var(--yellow)}.gD{background:rgba(255,140,0,.15);color:var(--orange)}
+.gE,.gF{background:rgba(255,60,95,.15);color:var(--red)}
+.report-table{width:100%;border-collapse:collapse;font-size:12px}
+.report-table th{padding:8px 10px;text-align:left;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);font-weight:600}
+.report-table td{padding:10px 10px;border-bottom:1px solid rgba(26,37,64,.5)}
+.report-table tr:hover td{background:rgba(255,255,255,.02)}
+.pred-badge{background:rgba(123,97,255,.1);border:1px solid rgba(123,97,255,.25);border-radius:9px;padding:10px 14px;margin-bottom:10px}
+.pred-badge h4{font-size:12px;font-weight:700;color:var(--purple)}
+.pred-badge p{font-size:11px;color:var(--muted);margin-top:2px}
+.voice-panel{position:fixed;bottom:20px;right:20px;width:320px;z-index:800;background:var(--s1);border:1px solid rgba(123,97,255,.4);border-radius:14px;padding:16px;box-shadow:0 20px 50px rgba(0,0,0,.5);display:none}
+.voice-panel.open{display:block;animation:sup .3s ease}
+@keyframes sup{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+.vp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.vp-title{font-size:13px;font-weight:700;color:var(--purple)}
+.vp-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px}
+.vp-status{font-size:11px;color:var(--muted);margin-bottom:8px}
+.vp-transcript{background:var(--s2);border-radius:7px;padding:8px;min-height:38px;font-size:12px;color:var(--text);margin-bottom:8px;border:1px solid var(--border);font-style:italic}
+.vp-response{font-size:11px;color:var(--cyan);font-family:var(--mono);min-height:16px}
+.vp-cmds{margin-top:10px}
+.vp-cmds-title{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.vp-chip{display:inline-block;background:var(--s2);border:1px solid var(--border);border-radius:5px;padding:2px 7px;font-size:10px;margin:2px;cursor:pointer;transition:all .2s}
+.vp-chip:hover{border-color:var(--purple);color:var(--purple)}
+#toast-box{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:5px;align-items:center}
+.toast{background:var(--s1);border:1px solid var(--border);border-radius:9px;padding:10px 18px;font-size:12px;min-width:240px;text-align:center;animation:tin .3s;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+@keyframes tin{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+.toast.s{border-left:3px solid var(--green)}.toast.e{border-left:3px solid var(--red)}.toast.w{border-left:3px solid var(--orange)}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+@media(max-width:1100px){.grid-2,.grid-3,.grid-65,.grid-56{grid-template-columns:1fr}.int-cards{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.int-cards{grid-template-columns:1fr}.kpi-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a class="nav-brand" href="index.html">🚦 SmartTraffic</a>
+  <span class="nav-sep">›</span>
+  <span style="font-size:13px;font-weight:600;">🌍 Congestion &amp; Emission</span>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showTab('live',this)">📡 Live</button>
+    <button class="nav-tab" onclick="showTab('history',this)">📈 History</button>
+    <button class="nav-tab" onclick="showTab('heatmap',this)">🗺 Heatmap</button>
+    <button class="nav-tab" onclick="showTab('emission',this)">🌿 Emission</button>
+    <button class="nav-tab" onclick="showTab('report',this)">📋 Report</button>
+  </div>
+  <div class="nav-right">
+    <div class="live-pill"><div class="live-dot"></div>LIVE</div>
+    <select id="sel-int" onchange="onIntChange()"
+      style="background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:5px 9px;color:var(--text);font-family:var(--font);font-size:12px;outline:none">
+      <option value="INT-001">INT-001 — MG Road</option>
+      <option value="INT-002">INT-002 — Residency</option>
+      <option value="INT-003">INT-003 — Airport</option>
+      <option value="INT-004">INT-004 — Ring Road</option>
+    </select>
+    <button class="btn btn-cyan" onclick="refreshAll()">↻ Refresh</button>
+    <button class="voice-btn" id="voice-btn" onclick="toggleVoice()"><span>🎤</span><span id="vlabel">Voice Control</span></button>
+    <!-- ── THEME SWITCHER ── -->
+    <div style="display:flex;align-items:center;gap:3px;background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:3px;flex-shrink:0;">
+      <button onclick="setTheme('dark')" data-theme-target="dark" class="theme-btn-c active" style="width:28px;height:24px;border:none;background:transparent;border-radius:6px;cursor:pointer;font-size:13px;transition:all .2s;" title="Dark">🌙</button>
+      <button onclick="setTheme('light')" data-theme-target="light" class="theme-btn-c" style="width:28px;height:24px;border:none;background:transparent;border-radius:6px;cursor:pointer;font-size:13px;transition:all .2s;" title="Light">☀️</button>
+      <button onclick="setTheme('neon')" data-theme-target="neon" class="theme-btn-c" style="width:28px;height:24px;border:none;background:transparent;border-radius:6px;cursor:pointer;font-size:13px;transition:all .2s;" title="Neon">⚡</button>
+    </div>
+    <a href="index.html" class="btn btn-back">← Back</a>
+  </div>
+</nav>
+
+<!-- ALERT -->
+<div style="padding:0 20px;max-width:1700px;margin:0 auto">
+  <div class="alert-banner" id="cong-alert">
+    <div class="alert-icon">🚨</div>
+    <div class="alert-body"><h4 id="alert-title">High Congestion</h4><p id="alert-msg"></p></div>
+    <button class="alert-dismiss" onclick="this.parentElement.classList.remove('show')">✕</button>
+  </div>
+</div>
+
+<!-- TAB: LIVE -->
+<div class="page active" id="tab-live">
+  <div class="int-cards" id="int-cards"></div>
+  <div class="kpi-grid" id="kpi-grid"></div>
+
+  <div class="grid-65" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-title">🔴 Congestion Meter + Signal Optimization</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+        <div class="c-meter-wrap" style="flex:0 0 160px">
+          <div class="c-meter">
+            <svg class="c-meter-svg" viewBox="0 0 160 80">
+              <path d="M10 80 A70 70 0 0 1 150 80" fill="none" stroke="#1a2540" stroke-width="14" stroke-linecap="round"/>
+              <path id="meter-arc" d="M10 80 A70 70 0 0 1 150 80" fill="none" stroke="#00ff88" stroke-width="14" stroke-linecap="round" stroke-dasharray="220" stroke-dashoffset="220"/>
+            </svg>
+            <div class="c-meter-val" id="meter-num">0</div>
+          </div>
+          <div class="c-meter-lbl">Score 0–100</div>
+          <div class="c-meter-status" id="meter-status" style="color:var(--green)">Free Flow</div>
+        </div>
+        <div style="flex:1;min-width:180px">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Vehicle Breakdown</div>
+          <div id="veh-breakdown" style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px"></div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🚦 AI Signal Recommendation</div>
+          <div id="signal-rec" style="background:var(--s2);border-radius:9px;padding:10px;font-size:11px"></div>
+          <div class="signal-strip" id="signal-strip"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📈 Live Vehicle Flow Rate</div>
+      <div class="cw"><canvas id="live-flow-chart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-3" style="margin-bottom:16px">
+    <div class="card"><div class="card-title">📊 Congestion Level Graph</div><div class="cw"><canvas id="cong-level-chart"></canvas></div></div>
+    <div class="card"><div class="card-title">🌿 CO₂ Emission Trend</div><div class="cw"><canvas id="em-trend-chart"></canvas></div></div>
+    <div class="card"><div class="card-title">🥧 CO₂ by Vehicle Type</div><div class="cw" style="height:190px"><canvas id="em-donut-chart"></canvas></div></div>
+  </div>
+
+  <div class="grid-56" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-title">🔮 TCN Prediction — 15–30 min ahead</div>
+      <div class="pred-badge"><h4 id="pred-label">Future Congestion Prediction</h4><p id="pred-desc">Loading...</p></div>
+      <div class="cw tall"><canvas id="tcn-pred-chart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">☁ Pollution Risk Zones</div>
+      <div id="zone-list"></div>
+      <div style="margin-top:12px">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Emission by Vehicle (CO₂ kg/min)</div>
+        <div id="em-bar-breakdown" style="display:flex;flex-direction:column;gap:5px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: HISTORY -->
+<div class="page" id="tab-history">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    <div><div style="font-size:20px;font-weight:700">📈 Historical Analytics</div><div style="font-size:12px;color:var(--muted)">24-hour rolling data</div></div>
+    <button class="btn btn-cyan" onclick="loadHistory()">↻ Load</button>
+  </div>
+  <div class="kpi-grid" id="hist-kpi-grid" style="margin-bottom:16px"></div>
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="card"><div class="card-title">📊 Congestion Score — 24h</div><div class="cw tall"><canvas id="hist-score-chart"></canvas></div></div>
+    <div class="card"><div class="card-title">🚗 Vehicle Flow Rate — 24h</div><div class="cw tall"><canvas id="hist-flow-chart"></canvas></div></div>
+  </div>
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="card"><div class="card-title">🌿 CO₂ Emissions — 24h</div><div class="cw tall"><canvas id="hist-co2-chart"></canvas></div></div>
+    <div class="card"><div class="card-title">💨 AQI Index — 24h</div><div class="cw tall"><canvas id="hist-aqi-chart"></canvas></div></div>
+  </div>
+  <div class="card"><div class="card-title">📋 Hourly Records</div>
+    <div style="overflow-x:auto"><table class="report-table"><thead><tr>
+      <th>Time</th><th>Score</th><th>Status</th><th>Veh/Min</th><th>Density</th><th>CO₂ kg/min</th><th>AQI</th><th>Alert</th>
+    </tr></thead><tbody id="hist-tbody"></tbody></table></div>
+  </div>
+</div>
+
+<!-- TAB: HEATMAP -->
+<div class="page" id="tab-heatmap">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    <div>
+      <div style="font-size:20px;font-weight:700">🗺 Live Congestion Heatmap</div>
+      <div style="font-size:12px;color:var(--muted)">Real street map · Heat blobs scale with traffic score · Click any marker for details</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <!-- Layer switcher -->
+      <div style="display:flex;background:#f1f5f9;border:1px solid #d0dae8;border-radius:8px;padding:2px;gap:2px">
+        <button class="map-layer-btn active" id="btn-layer-street" onclick="switchLayer('street',this)">🗺 Street</button>
+        <button class="map-layer-btn" id="btn-layer-satellite" onclick="switchLayer('satellite',this)">🛰 Satellite</button>
+        <button class="map-layer-btn" id="btn-layer-topo" onclick="switchLayer('topo',this)">🏔 Topo</button>
+      </div>
+      <!-- Overlay toggles -->
+      <div style="display:flex;background:#f1f5f9;border:1px solid #d0dae8;border-radius:8px;padding:2px;gap:2px">
+        <button class="map-layer-btn active" id="btn-ov-heat" onclick="toggleOverlay('heat',this)">🌡 Heat</button>
+        <button class="map-layer-btn active" id="btn-ov-markers" onclick="toggleOverlay('markers',this)">📍 Pins</button>
+        <button class="map-layer-btn" id="btn-ov-flow" onclick="toggleOverlay('flow',this)">➡ Flow</button>
+      </div>
+      <button class="btn btn-cyan" onclick="loadHeatmap()">↻ Refresh</button>
+    </div>
+  </div>
+
+  <!-- Map fills full width -->
+  <div style="position:relative;margin-bottom:16px">
+    <div id="congestion-map"></div>
+    <!-- Floating legend on map -->
+    <div id="map-float-legend" style="position:absolute;bottom:28px;left:12px;z-index:900;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);border:1px solid #d0dae8;border-radius:10px;padding:10px 14px;font-size:11px;box-shadow:0 4px 16px rgba(0,0,0,.12)">
+      <div style="font-weight:700;margin-bottom:6px;color:#0f172a">Congestion Level</div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;align-items:center;gap:7px"><div style="width:28px;height:10px;border-radius:5px;background:linear-gradient(90deg,#22c55e,#4ade80)"></div><span style="color:#166534">Low &lt; 45</span></div>
+        <div style="display:flex;align-items:center;gap:7px"><div style="width:28px;height:10px;border-radius:5px;background:linear-gradient(90deg,#f59e0b,#fbbf24)"></div><span style="color:#92400e">Med 45–75</span></div>
+        <div style="display:flex;align-items:center;gap:7px"><div style="width:28px;height:10px;border-radius:5px;background:linear-gradient(90deg,#ef4444,#f97316)"></div><span style="color:#991b1b">High &gt;75</span></div>
+      </div>
+      <!-- Mini live timestamp -->
+      <div id="map-live-ts" style="margin-top:6px;padding-top:6px;border-top:1px solid #e2e8f0;color:#64748b;font-size:10px">⏱ --</div>
+    </div>
+    <!-- Auto-refresh indicator -->
+    <div style="position:absolute;top:12px;right:12px;z-index:900;background:rgba(255,255,255,.9);border:1px solid #d0dae8;border-radius:20px;padding:4px 10px;font-size:11px;color:#64748b;display:flex;align-items:center;gap:5px">
+      <div id="map-pulse" style="width:8px;height:8px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite"></div>
+      <span id="map-refresh-label">Live</span>
+    </div>
+  </div>
+
+  <!-- Stats row below map -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px" id="heatmap-stats"></div>
+
+  <!-- Zones panel + bar chart -->
+  <div class="grid-65">
+    <div class="card">
+      <div class="card-title">📊 Congestion Score by Intersection</div>
+      <div class="cw" style="height:180px"><canvas id="map-bar-chart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">☁ Pollution Zones</div>
+      <div id="map-zones"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: EMISSION -->
+<div class="page" id="tab-emission">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    <div><div style="font-size:20px;font-weight:700">🌿 Environmental Report</div><div style="font-size:12px;color:var(--muted)">Daily CO₂, NOx, PM2.5 analysis</div></div>
+    <div style="display:flex;gap:8px"><button class="btn btn-green" onclick="exportReport()">⬇ Export PDF</button><button class="btn btn-cyan" onclick="loadEmissionReport()">↻ Refresh</button></div>
+  </div>
+  <div class="kpi-grid" id="em-kpi-grid" style="margin-bottom:16px"></div>
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="card"><div class="card-title">📊 CO₂ Emissions — 24h</div><div class="cw tall"><canvas id="em-co2-chart"></canvas></div></div>
+    <div class="card"><div class="card-title">💨 AQI &amp; NOx Trend</div><div class="cw tall"><canvas id="em-aqi-chart"></canvas></div></div>
+  </div>
+  <div class="grid-3" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-title">🏅 Environmental Grade</div>
+      <div style="display:flex;align-items:center;gap:14px;padding:8px 0">
+        <div id="em-grade-badge"></div>
+        <div><div style="font-size:20px;font-weight:700" id="em-grade-text">--</div><div style="font-size:11px;color:var(--muted);margin-top:3px" id="em-grade-desc">--</div></div>
+      </div>
+      <div id="em-impact-list"></div>
+    </div>
+    <div class="card" style="grid-column:span 2">
+      <div class="card-title">🥧 Emission by Vehicle Type</div>
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+        <div style="height:170px;width:170px;flex-shrink:0"><canvas id="em-type-donut"></canvas></div>
+        <div id="em-type-breakdown" style="flex:1;display:flex;flex-direction:column;gap:7px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: REPORT -->
+<div class="page" id="tab-report">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    <div><div style="font-size:20px;font-weight:700">📋 Smart City Daily Report</div><div style="font-size:12px;color:var(--muted)">All intersections — exportable for authorities</div></div>
+    <div style="display:flex;gap:8px"><button class="btn btn-green" onclick="exportReport()">⬇ Export PDF</button><button class="btn btn-cyan" onclick="loadSmartReport()">↻ Generate</button></div>
+  </div>
+  <div id="smart-report-content"><div style="text-align:center;padding:50px;color:var(--muted)">Click "Generate" to build the daily report</div></div>
+</div>
+
+<!-- VOICE PANEL -->
+<div class="voice-panel" id="voice-panel">
+  <div class="vp-header"><div class="vp-title">🎤 Voice Control</div><button class="vp-close" onclick="closeVoice()">✕</button></div>
+  <div class="vp-status" id="vp-status">Click mic to start...</div>
+  <div class="vp-transcript" id="vp-transcript">Say a command...</div>
+  <div class="vp-response" id="vp-response"></div>
+  <div class="vp-cmds"><div class="vp-cmds-title">Quick Commands</div><div id="vp-chips"></div></div>
+</div>
+<div id="toast-box"></div>
+
+<script>
+// ── CONSTANTS & STATE ─────────────────────────────────────────────────────────
+const INTS     = ['INT-001','INT-002','INT-003','INT-004'];
+const INT_NAMES= {'INT-001':'MG Road Junction','INT-002':'Residency Road',
+                  'INT-003':'Old Airport Road','INT-004':'Outer Ring Road'};
+const INT_COORDS={'INT-001':[12.9716,77.5946],'INT-002':[12.9656,77.6010],
+                  'INT-003':[12.9780,77.6090],'INT-004':[12.9600,77.5800]};
+
+const API_BASE = 'http://localhost:5000/api';
+let authToken  = localStorage.getItem('smarttraffic_token') || '';
+let charts={}, liveTimer=null, mapObj=null;
+let heatCanvas=null, markerLayer=null, flowLayer=null, heatLayer=null;
+let overlayState={heat:true,markers:true,flow:false};
+let mapAutoTimer=null;
+let currentInt='INT-001';
+let flowBuf=[], congBuf=[], emBuf=[];
+let recognition=null, isListening=false;
+
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+async function ensureToken(){
+  if(authToken && authToken!=='demo-token') return true;
+  try{
+    const r=await fetch(`${API_BASE}/auth/login`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:'admin@smarttraffic.ai',password:'admin123'}),
+      signal:AbortSignal.timeout(5000)
+    });
+    if(r.ok){const d=await r.json();if(d.success&&d.token){authToken=d.token;localStorage.setItem('smarttraffic_token',authToken);return true;}}
+  }catch(e){}
+  return false;
+}
+
+async function apiFetch(path, opts={}){
+  if(!authToken) await ensureToken();
+  try{
+    let r=await fetch(API_BASE+path,{...opts,signal:AbortSignal.timeout(10000),
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${authToken}`,...(opts.headers||{})}});
+    if(r.status===422||r.status===401){
+      authToken='';localStorage.removeItem('smarttraffic_token');
+      await ensureToken();
+      r=await fetch(API_BASE+path,{...opts,signal:AbortSignal.timeout(10000),
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${authToken}`,...(opts.headers||{})}});
+    }
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
+  }catch(e){return{success:false,error:e.message};}
+}
+
+// ── TAB SWITCHING ─────────────────────────────────────────────────────────────
+function showTab(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  if(btn) btn.classList.add('active');
+  stopLiveRefresh();
+  if(id==='live'){loadLive();startLiveRefresh();}
+  else if(id==='history') loadHistory();
+  else if(id==='heatmap') loadHeatmap();
+  else if(id==='emission') loadEmissionReport();
+  else if(id==='report') loadSmartReport();
+  requestAnimationFrame(()=>setTimeout(()=>{Object.values(charts).forEach(c=>{try{c.resize();}catch(e){}});},80));
+}
+
+function onIntChange(){currentInt=document.getElementById('sel-int').value;loadLive();}
+function selectInt(id){currentInt=id;document.getElementById('sel-int').value=id;loadLive();}
+
+// ── LIVE TAB ──────────────────────────────────────────────────────────────────
+async function loadLive(){
+  const d=await apiFetch(`/traffic/congestion-report?intersection_id=${currentInt}`);
+  if(!d.success){showNoData('live');return;}
+  renderKPIs(d);
+  updateMeter(d.congestion_score, d.congestion_status, d.congestion_color);
+  renderVehBreakdown(d.vehicle_counts, d.emission_breakdown);
+  renderSignalRec(d);
+  renderAlert(d);
+  renderPredBadge(d);
+  pushLiveChart(d.vehicles_per_minute, d.congestion_score, parseFloat(d.co2_emission)||0);
+  updateEmDonut(d.emission_breakdown);
+  // Load all intersection cards
+  const all=await apiFetch('/traffic/congestion-report/all');
+  if(all.success) renderIntCards(all.reports);
+}
+
+function showNoData(tab){
+  showToast('e','❌ Could not load data — is Flask running on port 5000?');
+}
+
+function renderKPIs(d){
+  const aqi=d.aqi||0, aql=d.aqi_level||'--';
+  const nox=d.nox_mg_per_min||0, co2=parseFloat(d.co2_emission)||0;
+  document.getElementById('kpi-grid').innerHTML=[
+    {icon:'🚗',val:(d.vehicles_per_minute||0).toFixed(1),lbl:'Vehicles/Min',sub:d.congestion_status||'--',c:'cc'},
+    {icon:'🛣',val:(d.lane_density_pct||0).toFixed(1)+'%',lbl:'Lane Density',sub:d.lane_density_pct>70?'Dense':'Normal',c:'co'},
+    {icon:'🔴',val:(d.congestion_score||0).toFixed(0),lbl:'Congestion Score',sub:d.congestion_status||'--',c:'cr'},
+    {icon:'🌱',val:co2.toFixed(4),lbl:'CO₂ kg/min',sub:aql,c:'cg'},
+    {icon:'💨',val:aqi,lbl:'AQI Index',sub:aql,c:'cp'},
+    {icon:'🌡',val:(nox).toFixed(4),lbl:'NOx mg/min',sub:'Nitrogen Oxide',c:'cy'},
+    {icon:'🌳',val:d.trees_needed||0,lbl:'Trees to Offset',sub:'per hour',c:'cc'},
+    {icon:'🏅',val:d.env_rating||'--',lbl:'Env Rating',sub:'A=Best F=Worst',c:'cg'},
+  ].map(k=>`<div class="kpi ${k.c}"><div class="kpi-icon">${k.icon}</div>
+    <div class="kpi-val">${k.val}</div><div class="kpi-lbl">${k.lbl}</div>
+    <div class="kpi-sub up">${k.sub}</div></div>`).join('');
+}
+
+const colorMap={green:'#00ff88',yellow:'#ffd600',orange:'#ff8c00',red:'#ff3c5f',darkred:'#cc1130'};
+function updateMeter(score,status,color){
+  const arc=document.getElementById('meter-arc');
+  const num=document.getElementById('meter-num');
+  const sta=document.getElementById('meter-status');
+  if(!arc) return;
+  arc.style.strokeDashoffset=220-(score/100)*220;
+  const c=colorMap[color]||'#00ff88';
+  arc.style.stroke=c; num.textContent=Math.round(score); num.style.color=c;
+  sta.textContent=status; sta.style.color=c;
+}
+
+function renderVehBreakdown(counts,bd){
+  const icons={car:'🚗',bus:'🚌',truck:'🚚',bike:'🏍',emergency:'🚑'};
+  if(!counts){document.getElementById('veh-breakdown').innerHTML='<div style="color:var(--muted);font-size:12px">Upload a video to see real vehicle data</div>';return;}
+  const tot=Object.values(counts).reduce((a,b)=>a+b,0);
+  document.getElementById('veh-breakdown').innerHTML=Object.entries(counts).filter(([,v])=>v>0).map(([k,v])=>{
+    const pct=tot>0?Math.round(v/tot*100):0;
+    return `<div style="display:flex;align-items:center;gap:7px">
+      <span style="font-size:13px;width:18px">${icons[k]||'🚗'}</span>
+      <div style="flex:1"><div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px">
+        <span style="text-transform:capitalize">${k}</span><span style="font-family:var(--mono)">${v} (${pct}%)</span></div>
+        <div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden">
+          <div style="height:100%;background:var(--cyan);width:${pct}%;border-radius:2px;transition:width .5s"></div></div>
+      </div></div>`;
+  }).join('');
+  const em=document.getElementById('em-bar-breakdown');
+  if(em&&bd){
+    const totC=Object.values(bd).reduce((a,b)=>a+b,0);
+    em.innerHTML=Object.entries(bd).map(([k,v])=>{
+      const pct=totC>0?Math.round(v/totC*100):0;
+      return `<div style="display:flex;align-items:center;gap:7px;font-size:11px">
+        <span style="width:48px;text-transform:capitalize;color:var(--muted)">${k}</span>
+        <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+          <div style="height:100%;background:var(--green);width:${pct}%;border-radius:2px;transition:width .5s"></div></div>
+        <span style="font-family:var(--mono);font-size:10px;width:48px;text-align:right">${v.toFixed(3)}kg</span></div>`;
+    }).join('');
+  }
+}
+
+function renderSignalRec(d){
+  const ac=d.signal_action||'NORMAL';
+  const c=ac==='EXTEND_GREEN'?'var(--cyan)':ac==='REDUCE_CYCLE'?'var(--yellow)':'var(--green)';
+  document.getElementById('signal-rec').innerHTML=
+    `<div style="color:${c};font-weight:700;margin-bottom:3px">${ac==='EXTEND_GREEN'?'↑ EXTEND GREEN':ac==='REDUCE_CYCLE'?'↓ REDUCE CYCLE':'✓ NORMAL'}</div>
+    <div style="color:var(--muted);font-size:10px">${d.signal_detail||''}</div>`;
+  const adj=d.green_adjustment||0;
+  const base=30+adj;
+  document.getElementById('signal-strip').innerHTML=['N','S','E','W'].map(dir=>
+    `<div class="sig-light sig-green">${dir}<br><b>${Math.max(15,Math.min(90,base))}s</b></div>`).join('');
+}
+
+function renderAlert(d){
+  const b=document.getElementById('cong-alert');
+  if(d.alert_triggered&&d.alert_message){
+    b.className='alert-banner'+(d.congestion_score>=90?'':' warn')+' show';
+    document.getElementById('alert-title').textContent=d.congestion_score>=90?'🚨 GRIDLOCK':'⚠ High Congestion';
+    document.getElementById('alert-msg').textContent=d.alert_message;
+  } else b.classList.remove('show');
+}
+
+function renderPredBadge(d){
+  const h=(new Date().getHours()+1)%24;
+  const ts=`${String(h).padStart(2,'0')}:00`;
+  const score=d.congestion_score||0;
+  const load=score>70?'HIGH':score>45?'MODERATE':'LOW';
+  const lc=load==='HIGH'?'var(--red)':load==='MODERATE'?'var(--orange)':'var(--green)';
+  document.getElementById('pred-label').textContent=`Prediction — Score: ${score.toFixed(0)}/100`;
+  document.getElementById('pred-desc').innerHTML=`Time: ${ts} &nbsp;|&nbsp; Expected: <b style="color:${lc}">${load}</b> &nbsp;|&nbsp; TCN RMSE: 2.232`;
+}
+
+function renderIntCards(reports){
+  if(!reports||!reports.length){document.getElementById('int-cards').innerHTML='<div style="color:var(--muted);font-size:12px;padding:10px">No intersection data — upload a video first</div>';return;}
+  const colorM={green:'var(--green)',yellow:'var(--yellow)',orange:'var(--orange)',red:'var(--red)',darkred:'var(--red)'};
+  document.getElementById('int-cards').innerHTML=reports.map(r=>{
+    const pct=Math.min(100,r.congestion_score);
+    const bc=colorM[r.congestion_color]||'var(--green)';
+    const iid=r.intersection_id;
+    return `<div class="int-card ${iid===currentInt?'sel':''}" onclick="selectInt('${iid}')">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">${iid}</div>
+      <div style="font-size:12px;font-weight:600;margin:2px 0 6px">${INT_NAMES[iid]||iid}</div>
+      <div class="cong-bar-wrap"><div class="cong-bar-fill" style="width:${pct}%;background:${bc}"></div></div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:${bc}">${(r.congestion_score||0).toFixed(0)}</div>
+        <span class="tag ${r.congestion_score>75?'tag-red':r.congestion_score>45?'tag-orange':'tag-green'}">${r.congestion_status||'--'}</span>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">${(r.vehicles_per_minute||0).toFixed(1)} veh/min · AQI ${r.emission?.aqi_estimate||'--'}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderZones(reports){
+  if(!reports) return;
+  document.getElementById('zone-list').innerHTML=reports.map(r=>{
+    const co2=r.emission?.co2_kg_per_min||0;
+    const zone=co2>0.5?'Zone A – High CO₂':co2>0.2?'Zone B – Moderate':'Zone C – Safe';
+    const zc=co2>0.5?'var(--red)':co2>0.2?'var(--orange)':'var(--green)';
+    return `<div class="zone-item">
+      <div class="zone-dot" style="background:${zc}"></div>
+      <div class="zone-info"><div class="zone-name">${r.intersection_id} — ${INT_NAMES[r.intersection_id]||r.intersection_id}</div>
+        <div class="zone-detail">${zone} · AQI ${r.emission?.aqi_estimate||'--'}</div></div>
+      <div class="zone-val" style="color:${zc}">${co2.toFixed(4)} kg/min</div>
+    </div>`;
+  }).join('');
+}
+
+// ── CHARTS ────────────────────────────────────────────────────────────────────
+const CHART_OPTS={responsive:true,maintainAspectRatio:false,
+  plugins:{legend:{labels:{color:'#64748b',font:{size:10}}}},
+  scales:{x:{ticks:{color:'#64748b',font:{size:9}},grid:{color:'rgba(26,37,64,.5)'}},
+          y:{ticks:{color:'#64748b',font:{size:9}},grid:{color:'rgba(26,37,64,.5)'} }}};
+
+function mkChart(id,type,data,extra={}){
+  if(charts[id]) charts[id].destroy();
+  const el=document.getElementById(id); if(!el) return;
+  charts[id]=new Chart(el.getContext('2d'),{type,data,options:{...CHART_OPTS,...extra}});
+  return charts[id];
+}
+
+const BUF=28;
+function pushLiveChart(vpm,score,co2){
+  flowBuf.push(+vpm); congBuf.push(+score); emBuf.push(+co2);
+  if(flowBuf.length>BUF){flowBuf.shift();congBuf.shift();emBuf.shift();}
+  const lbs=flowBuf.map((_,i)=>`-${BUF-i}s`);
+  if(charts['live-flow-chart']){charts['live-flow-chart'].data.labels=lbs;charts['live-flow-chart'].data.datasets[0].data=[...flowBuf];charts['live-flow-chart'].update('none');}
+  else mkChart('live-flow-chart','line',{labels:lbs,datasets:[{label:'Veh/min',data:[...flowBuf],borderColor:'#00d4ff',backgroundColor:'rgba(0,212,255,.1)',fill:true,tension:.4,pointRadius:0}]});
+  if(charts['cong-level-chart']){charts['cong-level-chart'].data.labels=lbs;charts['cong-level-chart'].data.datasets[0].data=[...congBuf];charts['cong-level-chart'].data.datasets[0].backgroundColor=congBuf.map(v=>v>75?'rgba(255,60,95,.6)':v>45?'rgba(255,140,0,.6)':'rgba(0,255,136,.6)');charts['cong-level-chart'].update('none');}
+  else mkChart('cong-level-chart','bar',{labels:lbs,datasets:[{label:'Score',data:[...congBuf],backgroundColor:congBuf.map(v=>v>75?'rgba(255,60,95,.6)':v>45?'rgba(255,140,0,.6)':'rgba(0,255,136,.6)'),borderRadius:3}]});
+  if(charts['em-trend-chart']){charts['em-trend-chart'].data.labels=lbs;charts['em-trend-chart'].data.datasets[0].data=[...emBuf];charts['em-trend-chart'].update('none');}
+  else mkChart('em-trend-chart','line',{labels:lbs,datasets:[{label:'CO₂ kg/min',data:[...emBuf],borderColor:'#00ff88',backgroundColor:'rgba(0,255,136,.08)',fill:true,tension:.4,pointRadius:0}]});
+}
+
+function updateEmDonut(bd){
+  if(!bd) return;
+  const labs=Object.keys(bd),vals=Object.values(bd);
+  const bg=['rgba(0,212,255,.7)','rgba(255,183,77,.7)','rgba(244,67,54,.7)','rgba(76,175,80,.7)'];
+  if(charts['em-donut-chart']){charts['em-donut-chart'].data.labels=labs;charts['em-donut-chart'].data.datasets[0].data=vals;charts['em-donut-chart'].update();}
+  else mkChart('em-donut-chart','doughnut',{labels:labs,datasets:[{data:vals,backgroundColor:bg,borderWidth:0}]},
+    {plugins:{legend:{position:'bottom',labels:{color:'#64748b',font:{size:10}}}},scales:{}});
+}
+
+function updateTCNChart(){
+  const h=new Date().getHours();
+  const lbs=Array.from({length:8},(_,i)=>{const t=(h+i+1)%24;return `${String(t).padStart(2,'0')}:00`;});
+  const base=(h>=7&&h<=9)||(h>=17&&h<=20)?30:h<=5?6:16;
+  const pred=lbs.map(()=>Math.max(3,base+(Math.random()*8-4)));
+  if(charts['tcn-pred-chart']){charts['tcn-pred-chart'].data.labels=lbs;charts['tcn-pred-chart'].data.datasets[0].data=pred;charts['tcn-pred-chart'].update();}
+  else mkChart('tcn-pred-chart','line',{labels:lbs,datasets:[
+    {label:'TCN Predicted',data:pred,borderColor:'#7b61ff',backgroundColor:'rgba(123,97,255,.12)',fill:true,tension:.4,pointRadius:3},
+    {label:'Upper',data:pred.map(v=>v+4.5),borderColor:'rgba(123,97,255,.3)',borderDash:[4,4],fill:false,tension:.4,pointRadius:0},
+    {label:'Lower',data:pred.map(v=>Math.max(0,v-4.5)),borderColor:'rgba(123,97,255,.3)',borderDash:[4,4],fill:false,tension:.4,pointRadius:0},
+  ]});
+}
+
+// ── HISTORY TAB ───────────────────────────────────────────────────────────────
+async function loadHistory(){
+  const d=await apiFetch(`/traffic/congestion-history/${currentInt}?hours=24`);
+  if(!d.success||!d.chart_data){showNoData('history');return;}
+  const cd=d.chart_data;
+  const lbs=cd.labels, scores=cd.congestion_scores, vpms=cd.vehicles_per_min, co2s=cd.co2_kg_per_min;
+  mkChart('hist-score-chart','line',{labels:lbs,datasets:[
+    {label:'Congestion Score',data:scores,borderColor:'#ff8c00',backgroundColor:'rgba(255,140,0,.08)',fill:true,tension:.4,pointRadius:0},
+    {label:'Predicted',data:scores.map(v=>Math.max(0,v+(Math.random()*10-5))),borderColor:'#7b61ff',borderDash:[4,4],fill:false,tension:.4,pointRadius:0},
+  ]});
+  mkChart('hist-flow-chart','line',{labels:lbs,datasets:[{label:'Veh/min',data:vpms,borderColor:'#00d4ff',backgroundColor:'rgba(0,212,255,.08)',fill:true,tension:.4,pointRadius:1}]});
+  mkChart('hist-co2-chart','bar',{labels:lbs,datasets:[{label:'CO₂ kg/min',data:co2s,backgroundColor:co2s.map(v=>v>.04?'rgba(255,60,95,.6)':v>.02?'rgba(255,140,0,.6)':'rgba(0,255,136,.6)'),borderRadius:2}]});
+  const aqis=d.history.map(h=>h.emission?.aqi_estimate||0);
+  const noxs=d.history.map(h=>h.emission?.nox_mg_per_min||0);
+  mkChart('hist-aqi-chart','line',{labels:lbs,datasets:[
+    {label:'AQI',data:aqis,borderColor:'#7b61ff',backgroundColor:'rgba(123,97,255,.1)',fill:true,tension:.4,pointRadius:0},
+    {label:'NOx×100',data:noxs.map(v=>+(v*100).toFixed(2)),borderColor:'#ff8c00',backgroundColor:'transparent',tension:.4,pointRadius:0},
+  ]});
+  const a=d.analytics||{};
+  document.getElementById('hist-kpi-strip').innerHTML=[
+    {i:'📊',v:(a.avg_congestion_score||0).toFixed(1),l:'Avg Score'},
+    {i:'🚗',v:(a.avg_vpm||0).toFixed(1),l:'Avg Veh/min'},
+    {i:'🌱',v:(a.total_co2_kg||0).toFixed(2)+'kg',l:'Total CO₂ (24h)'},
+    {i:'💨',v:(a.avg_aqi||0).toFixed(0),l:'Avg AQI'},
+    {i:'🏅',v:a.env_rating||'--',l:'Env Rating'},
+    {i:'⚠',v:a.high_congestion_hours||0,l:'High Cong Hours'},
+  ].map(k=>`<div class="hist-kpi"><div class="hist-kpi-icon">${k.i}</div><div class="hist-kpi-val">${k.v}</div><div class="hist-kpi-lbl">${k.l}</div></div>`).join('');
+}
+
+// ── HEATMAP TAB ───────────────────────────────────────────────────────────────
+const TILE_LAYERS={
+  street:{url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',attr:'© OpenStreetMap contributors',opts:{maxZoom:19}},
+  satellite:{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',attr:'© Esri World Imagery',opts:{maxZoom:18}},
+  topo:{url:'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',attr:'© OpenTopoMap',opts:{maxZoom:17}},
+};
+let activeTileLayer=null, activeLayerKey='street';
+
+const INT_DATA={
+  'INT-001':{name:'MG Road Junction',coords:[12.9716,77.5946],road:'MG Road × Brigade Rd',capacity:1800},
+  'INT-002':{name:'Residency Road',coords:[12.9656,77.6010],road:'Residency Rd × Richmond Rd',capacity:1400},
+  'INT-003':{name:'Old Airport Road',coords:[12.9780,77.6090],road:'Old Airport Rd × HAL 2nd St',capacity:2100},
+  'INT-004':{name:'Outer Ring Road',coords:[12.9600,77.5800],road:'ORR × Sarjapur Connector',capacity:2500},
+};
+const CORRIDORS=[{from:'INT-001',to:'INT-002'},{from:'INT-002',to:'INT-003'},{from:'INT-001',to:'INT-004'},{from:'INT-003',to:'INT-004'}];
+
+function _scoreColor(score){
+  if(score>75) return{fill:'#ef4444',stroke:'#dc2626',text:'#7f1d1d'};
+  if(score>45) return{fill:'#f59e0b',stroke:'#d97706',text:'#78350f'};
+  return{fill:'#22c55e',stroke:'#16a34a',text:'#14532d'};
+}
+
+function switchLayer(key,btn){
+  document.querySelectorAll('.map-layer-btn[id^="btn-layer-"]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  activeLayerKey=key;
+  if(!mapObj) return;
+  if(activeTileLayer) mapObj.removeLayer(activeTileLayer);
+  const cfg=TILE_LAYERS[key];
+  activeTileLayer=L.tileLayer(cfg.url,{attribution:cfg.attr,...cfg.opts});
+  activeTileLayer.addTo(mapObj);
+}
+
+function toggleOverlay(type,btn){
+  overlayState[type]=!overlayState[type];
+  btn.classList.toggle('active',overlayState[type]);
+  if(!mapObj) return;
+  if(type==='heat'){heatLayer&&(overlayState.heat?heatLayer.addTo(mapObj):mapObj.removeLayer(heatLayer));}
+  if(type==='markers'){markerLayer&&(overlayState.markers?markerLayer.addTo(mapObj):mapObj.removeLayer(markerLayer));}
+  if(type==='flow'){flowLayer&&(overlayState.flow?flowLayer.addTo(mapObj):mapObj.removeLayer(flowLayer));}
+}
+
+async function loadHeatmap(){
+  const d=await apiFetch('/traffic/congestion-report/all');
+  if(!d.success){showToast('e','Could not load heatmap data');return;}
+  const reports=d.reports||[];
+  if(!mapObj){
+    mapObj=L.map('congestion-map',{zoomControl:true,scrollWheelZoom:true}).setView([12.9580,77.6100],13);
+    const cfg=TILE_LAYERS.street;
+    activeTileLayer=L.tileLayer(cfg.url,{attribution:cfg.attr,...cfg.opts});
+    activeTileLayer.addTo(mapObj);
+    heatLayer=L.layerGroup().addTo(mapObj);
+    flowLayer=L.layerGroup();
+    markerLayer=L.layerGroup().addTo(mapObj);
+  } else {heatLayer.clearLayers();markerLayer.clearLayers();flowLayer.clearLayers();}
+
+  reports.forEach(r=>{
+    const iid=r.intersection_id, info=INT_DATA[iid];
+    if(!info) return;
+    const score=r.congestion_score||0, col=_scoreColor(score);
+    const radius=260+score*3.5;
+    L.circle(info.coords,{radius:radius*1.5,color:'transparent',fillColor:col.fill,fillOpacity:0.07,interactive:false}).addTo(heatLayer);
+    L.circle(info.coords,{radius:radius,color:col.stroke,weight:1,fillColor:col.fill,fillOpacity:0.22,interactive:false}).addTo(heatLayer);
+    L.circle(info.coords,{radius:radius*0.35,color:col.stroke,weight:0,fillColor:col.fill,fillOpacity:0.45,interactive:false}).addTo(heatLayer);
+    const icon=L.divIcon({className:'',iconSize:[52,52],iconAnchor:[26,26],popupAnchor:[0,-28],
+      html:`<div style="width:52px;height:52px;border-radius:50%;background:${col.fill};border:3px solid ${col.stroke};box-shadow:0 3px 12px rgba(0,0,0,.25);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;cursor:pointer">
+        <div style="font-size:14px;font-weight:800;color:#fff;line-height:1">${Math.round(score)}</div>
+        <div style="font-size:8px;color:rgba(255,255,255,.9);font-weight:600">SCORE</div></div>`});
+    const vpm=r.vehicles_per_minute||0, co2=r.emission?.co2_kg_per_min||0, aqi=r.emission?.aqi_estimate||0;
+    const popup=`<div style="min-width:210px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div><div style="font-weight:700;font-size:14px;color:#0f172a">${info.name}</div>
+          <div style="font-size:11px;color:#64748b">${info.road}</div></div>
+        <div style="background:${col.fill};color:#fff;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700">${r.congestion_status||'--'}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div style="background:#f8fafc;border-radius:8px;padding:8px;text-align:center"><div style="font-size:20px;font-weight:800;color:${col.fill}">${Math.round(score)}</div><div style="font-size:10px;color:#64748b">Congestion</div></div>
+        <div style="background:#f8fafc;border-radius:8px;padding:8px;text-align:center"><div style="font-size:20px;font-weight:800;color:#0284c7">${vpm.toFixed(1)}</div><div style="font-size:10px;color:#64748b">Veh/min</div></div>
+        <div style="background:#f8fafc;border-radius:8px;padding:8px;text-align:center"><div style="font-size:16px;font-weight:800;color:#059669">${co2.toFixed(3)}</div><div style="font-size:10px;color:#64748b">CO₂ kg/min</div></div>
+        <div style="background:#f8fafc;border-radius:8px;padding:8px;text-align:center"><div style="font-size:16px;font-weight:800;color:#7c3aed">${aqi}</div><div style="font-size:10px;color:#64748b">AQI</div></div>
+      </div></div>`;
+    L.marker(info.coords,{icon}).addTo(markerLayer).bindPopup(popup,{maxWidth:240});
+    const labelIcon=L.divIcon({className:'heat-label',iconSize:[80,18],iconAnchor:[40,-30],
+      html:`<div style="font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:700;color:#0f172a;text-align:center;background:rgba(255,255,255,.88);backdrop-filter:blur(4px);padding:2px 6px;border-radius:5px;border:1px solid #d0dae8;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.1)">${iid}</div>`});
+    L.marker(info.coords,{icon:labelIcon,interactive:false}).addTo(markerLayer);
+  });
+
+  CORRIDORS.forEach(({from,to})=>{
+    const a=INT_DATA[from],b=INT_DATA[to];if(!a||!b)return;
+    const fr=reports.find(r=>r.intersection_id===from);
+    const col=fr?_scoreColor(fr.congestion_score||0):{stroke:'#64748b'};
+    L.polyline([a.coords,b.coords],{color:col.stroke,weight:2.5,opacity:0.65,dashArray:'8,6'}).addTo(flowLayer);
+    const mid=[(a.coords[0]+b.coords[0])/2,(a.coords[1]+b.coords[1])/2];
+    L.marker(mid,{icon:L.divIcon({className:'heat-label',iconSize:[16,16],iconAnchor:[8,8],
+      html:`<div style="font-size:14px;color:${col.stroke};line-height:1;font-weight:700">➜</div>`}),interactive:false}).addTo(flowLayer);
+  });
+
+  if(!overlayState.heat) mapObj.removeLayer(heatLayer);
+  if(!overlayState.markers) mapObj.removeLayer(markerLayer);
+  if(overlayState.flow) flowLayer.addTo(mapObj);
+
+  // Stats row
+  const avgScore=(reports.reduce((s,r)=>s+(r.congestion_score||0),0)/Math.max(1,reports.length)).toFixed(0);
+  const totalVpm=reports.reduce((s,r)=>s+(r.vehicles_per_minute||0),0).toFixed(1);
+  const highCount=reports.filter(r=>(r.congestion_score||0)>75).length;
+  const totalCO2=reports.reduce((s,r)=>s+(r.emission?.co2_kg_per_min||0),0).toFixed(3);
+  document.getElementById('heatmap-stats').innerHTML=[
+    {icon:'📊',val:avgScore+'/100',lbl:'Avg Congestion',col:'#0284c7'},
+    {icon:'🚗',val:totalVpm,lbl:'Total Veh/min',col:'#0f172a'},
+    {icon:'🚨',val:highCount+' / '+reports.length,lbl:'High Congestion',col:'#dc2626'},
+    {icon:'🌿',val:totalCO2+' kg/m',lbl:'Total CO₂',col:'#059669'},
+  ].map(s=>`<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.06)">
+    <div style="font-size:22px;margin-bottom:2px">${s.icon}</div>
+    <div style="font-size:20px;font-weight:800;color:${s.col};font-family:'JetBrains Mono',monospace">${s.val}</div>
+    <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin-top:2px">${s.lbl}</div>
+  </div>`).join('');
+
+  document.getElementById('map-zones').innerHTML=reports.map(r=>{
+    const co2=r.emission?.co2_kg_per_min||0, col=_scoreColor(r.congestion_score||0);
+    const zone=co2>0.5?'Zone A – High CO₂':co2>0.2?'Zone B – Moderate':'Zone C – Safe';
+    return `<div class="zone-item"><div class="zone-dot" style="background:${col.fill}"></div>
+      <div class="zone-info"><div class="zone-name">${r.intersection_id} — ${INT_NAMES[r.intersection_id]||r.intersection_id}</div>
+        <div class="zone-detail">${zone} · AQI ${r.emission?.aqi_estimate||'--'}</div></div>
+      <div class="zone-val" style="color:${col.fill}">${co2.toFixed(3)} kg/m</div></div>`;
+  }).join('');
+
+  mkChart('map-bar-chart','bar',{
+    labels:reports.map(r=>r.intersection_id),
+    datasets:[{label:'Congestion Score',data:reports.map(r=>r.congestion_score||0),
+      backgroundColor:reports.map(r=>(r.congestion_score||0)>75?'rgba(239,68,68,.75)':(r.congestion_score||0)>45?'rgba(245,158,11,.75)':'rgba(34,197,94,.75)'),
+      borderColor:reports.map(r=>(r.congestion_score||0)>75?'#dc2626':(r.congestion_score||0)>45?'#d97706':'#16a34a'),
+      borderWidth:1,borderRadius:5}]
+  },{plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(0,0,0,.04)'}},y:{min:0,max:100,ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(0,0,0,.04)'}}}});
+
+  document.getElementById('map-live-ts').textContent='⏱ '+new Date().toLocaleTimeString();
+  if(!mapAutoTimer) mapAutoTimer=setInterval(()=>{
+    if(document.getElementById('tab-heatmap').classList.contains('active')) loadHeatmap();
+  },30000);
+}
+
+// ── EMISSION TAB ──────────────────────────────────────────────────────────────
+async function loadEmissionReport(){
+  const d=await apiFetch(`/traffic/emission-report/${currentInt}`);
+  if(!d.success){showNoData('emission');return;}
+  const cd=d.chart_data||{};
+  mkChart('em-co2-chart','bar',{labels:cd.labels||[],datasets:[{label:'CO₂ kg/hr',data:(cd.co2||[]).map(v=>+(v*60).toFixed(4)),
+    backgroundColor:(cd.co2||[]).map(v=>v>.04?'rgba(255,60,95,.6)':v>.02?'rgba(255,140,0,.6)':'rgba(0,255,136,.6)'),borderRadius:2}]});
+  mkChart('em-aqi-chart','line',{labels:cd.labels||[],datasets:[
+    {label:'AQI',data:cd.aqi||[],borderColor:'#7b61ff',backgroundColor:'rgba(123,97,255,.1)',fill:true,tension:.4,pointRadius:0},
+    {label:'NOx×100',data:(cd.nox||[]).map(v=>+(v*100).toFixed(2)),borderColor:'#ff8c00',backgroundColor:'transparent',tension:.4,pointRadius:0},
+  ]});
+  const totCo2=d.total_co2_kg||0, avgAqi=d.avg_aqi||0;
+  document.getElementById('em-kpi-grid').innerHTML=[
+    {i:'🌱',v:totCo2.toFixed(2)+' kg',l:'Total CO₂ (24h)',c:'cg'},
+    {i:'💨',v:avgAqi,l:'Avg AQI',c:'cp'},
+    {i:'🌿',v:(totCo2/1000).toFixed(5)+' t',l:'Metric Tons',c:'co'},
+    {i:'🌳',v:d.trees_needed_to_offset||0,l:'Trees Needed',c:'cc'},
+    {i:'🏅',v:d.env_rating||'--',l:'Env Rating',c:'cg'},
+    {i:'🚗',v:d.equivalent_cars_off_road||0,l:'Car-Equiv',c:'co'},
+  ].map(k=>`<div class="kpi ${k.c}"><div class="kpi-icon">${k.i}</div><div class="kpi-val">${k.v}</div><div class="kpi-lbl">${k.l}</div></div>`).join('');
+  const bd=d.breakdown_by_vehicle||{};
+  const gradeDesc={A:'Excellent — Minimal impact',B:'Good — Low emissions',C:'Fair — Moderate',D:'Poor — High emissions',E:'Very Poor — Critical'};
+  document.getElementById('em-grade-badge').innerHTML=`<div class="env-grade g${d.env_rating}">${d.env_rating||'--'}</div>`;
+  document.getElementById('em-grade-text').textContent='Rating '+(d.env_rating||'--');
+  document.getElementById('em-grade-desc').textContent=gradeDesc[d.env_rating]||'N/A';
+  document.getElementById('em-impact-list').innerHTML=[
+    {l:'Total CO₂ (24h)',v:totCo2.toFixed(2)+' kg'},{l:'Avg AQI',v:avgAqi},
+    {l:'Trees to offset',v:d.trees_needed_to_offset||0},{l:'Car-equivalents',v:(d.equivalent_cars_off_road||0)+' cars/km'},
+  ].map(i=>`<div style="display:flex;justify-content:space-between;font-size:11px;padding:5px 0;border-bottom:1px solid var(--border)">
+    <span style="color:var(--muted)">${i.l}</span><span style="font-family:var(--mono);font-weight:600">${i.v}</span></div>`).join('');
+  if(Object.keys(bd).length){
+    const bkLabs=Object.keys(bd), bkVals=Object.values(bd);
+    const bg=['rgba(0,212,255,.7)','rgba(255,183,77,.7)','rgba(244,67,54,.7)','rgba(76,175,80,.7)'];
+    mkChart('em-type-donut','doughnut',{labels:bkLabs,datasets:[{data:bkVals,backgroundColor:bg,borderWidth:0}]},
+      {plugins:{legend:{position:'bottom',labels:{color:'#64748b',font:{size:10}}}},scales:{}});
+    const totBd=bkVals.reduce((a,b)=>a+b,0);
+    document.getElementById('em-type-breakdown').innerHTML=bkLabs.map((k,i)=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+        <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:${bg[i]}"></div>
+        <span style="font-size:12px;flex:1;text-transform:capitalize">${k}</span>
+        <span style="font-family:var(--mono);font-size:11px">${bkVals[i].toFixed(3)} kg</span>
+        <span style="font-size:10px;color:var(--muted)">${totBd>0?Math.round(bkVals[i]/totBd*100):0}%</span>
+      </div>`).join('');
+  }
+}
+
+// ── SMART REPORT ──────────────────────────────────────────────────────────────
+async function loadSmartReport(){
+  const all=await apiFetch('/traffic/congestion-report/all');
+  if(!all.success){document.getElementById('smart-report-content').innerHTML='<div style="color:var(--muted);padding:40px;text-align:center">Could not load report data — is Flask running?</div>';return;}
+  const reports=all.reports||[];
+  document.getElementById('smart-report-content').innerHTML=`
+    <div class="grid-2" style="margin-bottom:16px">
+      <div class="card"><div class="card-title">📊 Congestion by Intersection</div><div style="height:180px"><canvas id="sr-score"></canvas></div></div>
+      <div class="card"><div class="card-title">🌿 CO₂ by Intersection</div><div style="height:180px"><canvas id="sr-co2"></canvas></div></div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">📋 Intersection Summary</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr>${['Intersection','Name','Veh/min','Cong.Score','CO₂ kg/min','AQI','Status'].map(h=>`<th style="text-align:left;padding:8px;border-bottom:2px solid var(--border);color:var(--muted)">${h}</th>`).join('')}</tr></thead>
+        <tbody>${reports.map((r,i)=>`<tr style="background:${i%2?'var(--s2)':''}">
+          <td style="padding:7px 8px;font-family:var(--mono);color:var(--accent)">${r.intersection_id}</td>
+          <td style="padding:7px 8px">${INT_NAMES[r.intersection_id]||r.intersection_id}</td>
+          <td style="padding:7px 8px">${(r.vehicles_per_minute||0).toFixed(1)}</td>
+          <td style="padding:7px 8px;font-weight:700;color:${(r.congestion_score||0)>75?'var(--red)':(r.congestion_score||0)>45?'var(--orange)':'var(--green)'}">${(r.congestion_score||0).toFixed(1)}</td>
+          <td style="padding:7px 8px">${(r.emission?.co2_kg_per_min||0).toFixed(4)}</td>
+          <td style="padding:7px 8px">${r.emission?.aqi_estimate||'--'}</td>
+          <td style="padding:7px 8px"><span style="padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;background:${(r.congestion_score||0)>75?'rgba(255,60,95,.15)':(r.congestion_score||0)>45?'rgba(255,140,0,.15)':'rgba(0,255,136,.15)'};color:${(r.congestion_score||0)>75?'var(--red)':(r.congestion_score||0)>45?'var(--orange)':'var(--green)'}">${r.congestion_status||'--'}</span></td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+  setTimeout(()=>{
+    mkChart('sr-score','bar',{labels:reports.map(r=>r.intersection_id),datasets:[{label:'Avg Score',data:reports.map(r=>r.congestion_score||0),backgroundColor:reports.map(r=>(r.congestion_score||0)>75?'rgba(255,60,95,.7)':(r.congestion_score||0)>45?'rgba(255,140,0,.7)':'rgba(0,255,136,.7)'),borderRadius:4}]});
+    mkChart('sr-co2','bar',{labels:reports.map(r=>r.intersection_id),datasets:[{label:'CO₂ kg/min',data:reports.map(r=>r.emission?.co2_kg_per_min||0),backgroundColor:'rgba(0,255,136,.6)',borderRadius:4}]});
+  },80);
+}
+
+// ── PDF EXPORT ────────────────────────────────────────────────────────────────
+async function exportReport(){
+  const all=await apiFetch('/traffic/congestion-report/all');
+  const reports=(all.success&&all.reports)||[];
+  const now=new Date();
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>SmartTraffic Report</title>
+  <style>@page{size:A4;margin:20mm 15mm}*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:11px;color:#1a1a2e}
+  .header{display:flex;justify-content:space-between;padding-bottom:14px;border-bottom:3px solid #00c97a;margin-bottom:18px}
+  .brand{font-size:22px;font-weight:800;color:#0f172a}.brand span{color:#00c97a}
+  .meta{text-align:right;font-size:10px;color:#64748b;line-height:1.7}
+  .section-title{font-size:13px;font-weight:700;margin:16px 0 8px;padding-left:8px;border-left:3px solid #00c97a}
+  table{width:100%;border-collapse:collapse;margin-bottom:16px}
+  th{background:#0f172a;color:#fff;padding:7px 8px;text-align:left;font-size:10px}
+  td{padding:6px 8px;border-bottom:1px solid #e2e8f0}tr:nth-child(even)td{background:#f8fafc}
+  .footer{margin-top:20px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:9px;color:#94a3b8;display:flex;justify-content:space-between}
+  @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
+  <div class="header"><div><div class="brand">🚦 <span>SmartTraffic</span> AI</div><div style="font-size:11px;color:#64748b;margin-top:4px">Urban Traffic Management System — Live Report</div></div>
+  <div class="meta"><div><b>Date:</b> ${now.toLocaleDateString()}</div><div><b>Time:</b> ${now.toLocaleTimeString()}</div><div><b>Source:</b> Live Backend Data</div></div></div>
+  <div class="section-title">📊 Live Intersection Status</div>
+  <table><thead><tr><th>Intersection</th><th>Name</th><th>Veh/min</th><th>Score</th><th>CO₂ kg/min</th><th>AQI</th><th>Status</th></tr></thead>
+  <tbody>${reports.map(r=>`<tr><td>${r.intersection_id}</td><td>${INT_NAMES[r.intersection_id]||r.intersection_id}</td>
+    <td>${(r.vehicles_per_minute||0).toFixed(1)}</td><td style="font-weight:700;color:${(r.congestion_score||0)>75?'#dc2626':(r.congestion_score||0)>45?'#d97706':'#059669'}">${(r.congestion_score||0).toFixed(1)}</td>
+    <td>${(r.emission?.co2_kg_per_min||0).toFixed(4)}</td><td>${r.emission?.aqi_estimate||'--'}</td><td>${r.congestion_status||'--'}</td></tr>`).join('')}</tbody></table>
+  <div class="footer"><span>SmartTraffic AI — Live Traffic Report</span><span>Generated: ${now.toISOString()}</span></div></body></html>`;
+  const win=window.open('','_blank','width=900,height=700');
+  if(win&&!win.closed){win.document.write(html);win.document.close();win.onload=()=>setTimeout(()=>win.print(),500);showToast('s','📄 Report opened — Print → Save as PDF');}
+  else{const blob=new Blob([html],{type:'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`SmartTraffic_Report_${now.toISOString().slice(0,10)}.html`;a.click();URL.revokeObjectURL(url);showToast('s','📄 Report downloaded');}
+}
+
+// ── LIVE REFRESH ──────────────────────────────────────────────────────────────
+function startLiveRefresh(){stopLiveRefresh();liveTimer=setInterval(loadLive,5000);}
+function stopLiveRefresh(){if(liveTimer){clearInterval(liveTimer);liveTimer=null;}}
+
+// ── VOICE CONTROL ─────────────────────────────────────────────────────────────
+function toggleVoice(){const p=document.getElementById('voice-panel');p.style.display=p.style.display==='block'?'none':'block';}
+function closeVoice(){stopListening();document.getElementById('voice-panel').style.display='none';}
+function startListening(){if(!('webkitSpeechRecognition'in window)){showToast('e','Speech not supported');return;}
+  recognition=new webkitSpeechRecognition();recognition.continuous=false;recognition.lang='en-US';
+  recognition.onresult=e=>{const t=e.results[0][0].transcript.toLowerCase();handleCmd(t);stopListening();};
+  recognition.onerror=()=>stopListening();recognition.start();isListening=true;
+  document.getElementById('vlabel').textContent='Listening...';document.getElementById('voice-btn').style.background='rgba(255,60,95,.2)';}
+function stopListening(){if(recognition)recognition.stop();isListening=false;document.getElementById('vlabel').textContent='Voice Control';document.getElementById('voice-btn').style.background='';}
+const CMDS={
+  'show congestion map':()=>goTab('heatmap','🗺 Heatmap'),
+  'show live traffic':()=>goTab('live','📡 Live'),
+  'show history':()=>goTab('history','📈 History'),
+  'show emission report':()=>goTab('emission','🌿 Emission'),
+  'show report':()=>goTab('report','📋 Report'),
+  'refresh':()=>{loadLive();speak('Refreshing live data');},
+  'open dashboard':()=>{speak('Opening main dashboard');setTimeout(()=>window.location='index.html',800);},
+};
+function handleCmd(t){const k=Object.keys(CMDS).find(c=>t.includes(c));if(k){CMDS[k]();speak('Done');}else speak('Command not recognized');}
+function goTab(id,name){document.querySelectorAll('.nav-tab').forEach(b=>{if(b.textContent.includes(name.replace(/^./,'')))b.click();});}
+function speak(t){if('speechSynthesis'in window){const u=new SpeechSynthesisUtterance(t);u.rate=0.9;speechSynthesis.speak(u);}}
+function populateChips(){
+  const q=['show congestion map','show live traffic','show emission report','show history','show report','refresh'];
+  document.getElementById('vp-chips').innerHTML=q.map(c=>`<span class="vp-chip" onclick="handleCmd('${c}')">${c}</span>`).join('');
+}
+
+// ── THEME SWITCHER ────────────────────────────────────────────────────────────
+function setTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  localStorage.setItem('smarttraffic_theme',t);
+  document.querySelectorAll('.theme-btn-c').forEach(b=>{
+    const isActive=b.dataset.themeTarget===t;
+    b.style.background=isActive?(t==='neon'?'#ff00ff':t==='light'?'#0284c7':'#00d4ff'):'transparent';
+    b.style.boxShadow=isActive?`0 0 8px ${t==='neon'?'rgba(255,0,255,.5)':t==='light'?'rgba(2,132,199,.4)':'rgba(0,212,255,.5)'}`:'none';
+  });
+  if(typeof Chart!=='undefined')Chart.helpers.each(Chart.instances,c=>{const d=t!=='light';const gc=d?'rgba(255,255,255,.05)':'rgba(0,0,0,.07)';const tc=d?'#64748b':'#94a3b8';if(c.options.scales)Object.values(c.options.scales).forEach(a=>{if(a.grid)a.grid.color=gc;if(a.ticks)a.ticks.color=tc;});c.update('none');});
+}
+(function(){const saved=localStorage.getItem('smarttraffic_theme')||'dark';document.documentElement.setAttribute('data-theme',saved);})();
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function showToast(t,m){const el=document.createElement('div');el.className='toast '+t;el.textContent=m;document.getElementById('toast-box').appendChild(el);setTimeout(()=>{el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(()=>el.remove(),300);},3200);}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+async function _initPage(){
+  populateChips();
+  await ensureToken();
+  await loadLive();
+  startLiveRefresh();
+  showToast('s','✅ Live data connected — Flask backend active');
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  const t=localStorage.getItem('smarttraffic_theme')||'dark';
+  document.documentElement.setAttribute('data-theme',t);
+  document.querySelectorAll('.theme-btn-c').forEach(b=>{
+    b.style.background=b.dataset.themeTarget===t?(t==='neon'?'#ff00ff':t==='light'?'#0284c7':'#00d4ff'):'transparent';
+  });
+  if(typeof Chart!=='undefined'){
+    requestAnimationFrame(()=>setTimeout(()=>_initPage(),150));
+  } else {
+    let tries=0;
+    const poll=setInterval(()=>{tries++;
+      if(typeof Chart!=='undefined'){clearInterval(poll);requestAnimationFrame(()=>setTimeout(()=>_initPage(),150));}
+      else if(tries>50){clearInterval(poll);_initPage();}
+    },100);
+  }
+});
+</script>
+</body>
+</html>

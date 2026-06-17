@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Emergency Detection Dashboard – SmartTraffic</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:       #0a0d14;
+    --surface:  #111622;
+    --card:     #161d2e;
+    --border:   #1e2d4a;
+    --accent:   #00c6ff;
+    --danger:   #ff3b3b;
+    --warn:     #ff9f00;
+    --ok:       #00e676;
+    --text:     #cdd6f4;
+    --sub:      #7c8db0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  header h1 { font-size: 1.2rem; color: var(--accent); letter-spacing: 1px; }
+  .hdr-right { display: flex; align-items: center; gap: 16px; font-size: 0.8rem; color: var(--sub); }
+  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  main { display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: auto auto auto; gap: 16px; padding: 16px 24px; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    overflow: hidden;
+  }
+  .card-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--sub);
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-title .badge {
+    padding: 2px 8px; border-radius: 20px; font-size: 0.65rem;
+    background: rgba(0,198,255,.15); color: var(--accent);
+  }
+
+  /* Camera feed card */
+  .feed-card { grid-column: 1 / 3; position: relative; }
+  #camera-feed {
+    width: 100%; aspect-ratio: 16/9;
+    background: #050810;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; color: var(--sub);
+    overflow: hidden;
+    position: relative;
+  }
+  #feed-img { width: 100%; height: 100%; object-fit: cover; display: none; border-radius: 6px; }
+  .feed-overlay {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.75));
+    padding: 10px 14px;
+    display: flex; gap: 16px; flex-wrap: wrap;
+    pointer-events: none;
+  }
+  .feed-stat { font-size: 0.72rem; }
+  .feed-stat span { color: var(--accent); font-weight: 600; }
+
+  /* Emergency status card */
+  .emerg-card { grid-column: 3; }
+  .emerg-box {
+    border-radius: 8px; padding: 14px; margin-bottom: 10px;
+    border: 1px solid var(--border);
+    background: rgba(255,59,59,.07);
+    text-align: center;
+  }
+  .emerg-box.active { border-color: var(--danger); background: rgba(255,59,59,.15); }
+  .emerg-box.ok     { border-color: var(--ok);     background: rgba(0,230,118,.07); }
+  .emerg-icon { font-size: 2.2rem; margin-bottom: 6px; }
+  .emerg-label { font-size: 0.85rem; font-weight: 700; }
+  .emerg-sub   { font-size: 0.72rem; color: var(--sub); margin-top: 4px; }
+
+  .stat-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.78rem; }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-val { font-weight: 700; color: var(--accent); }
+  .stat-val.danger { color: var(--danger); }
+  .stat-val.warn   { color: var(--warn); }
+  .stat-val.ok     { color: var(--ok); }
+
+  /* Confidence chart */
+  .conf-card { grid-column: 1; }
+  #confChart { max-height: 160px; }
+
+  /* Signal override card */
+  .signal-card { grid-column: 2; }
+  .signal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+  .signal-lane {
+    border-radius: 8px; padding: 10px;
+    background: rgba(255,255,255,.03);
+    border: 1px solid var(--border);
+    text-align: center; font-size: 0.72rem;
+  }
+  .signal-lane .dir { font-size: 1.2rem; margin-bottom: 4px; }
+  .signal-lane.green-active { border-color: var(--ok); background: rgba(0,230,118,.1); }
+  .signal-lane.red-active   { border-color: var(--danger); background: rgba(255,59,59,.1); }
+  .signal-lane.amber        { border-color: var(--warn);   background: rgba(255,159,0,.1); }
+
+  /* Motion tracking card */
+  .motion-card { grid-column: 3; }
+  .compass {
+    width: 90px; height: 90px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    position: relative; margin: 8px auto;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .compass-needle {
+    width: 3px; height: 35px;
+    background: linear-gradient(var(--accent), transparent);
+    transform-origin: bottom center;
+    position: absolute;
+    bottom: 50%; left: calc(50% - 1.5px);
+    border-radius: 2px;
+    transition: transform 0.4s ease;
+  }
+  .compass-labels { position: absolute; width: 100%; height: 100%; }
+  .compass-labels span { position: absolute; font-size: 0.6rem; color: var(--sub); }
+  .compass-labels .n { top: 4px;  left: 50%; transform: translateX(-50%); }
+  .compass-labels .s { bottom: 4px; left: 50%; transform: translateX(-50%); }
+  .compass-labels .e { right: 4px; top: 50%; transform: translateY(-50%); }
+  .compass-labels .w { left: 4px;  top: 50%; transform: translateY(-50%); }
+
+  /* Event log */
+  .log-card { grid-column: 1 / 4; max-height: 220px; overflow-y: auto; }
+  .log-table { width: 100%; border-collapse: collapse; font-size: 0.73rem; }
+  .log-table th { color: var(--sub); font-weight: 600; padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+  .log-table td { padding: 6px 10px; border-bottom: 1px solid rgba(30,45,74,.6); }
+  .log-table tr:hover td { background: rgba(255,255,255,.02); }
+  .sev-badge { padding: 2px 7px; border-radius: 10px; font-size: 0.65rem; font-weight: 700; }
+  .sev-critical { background: rgba(255,59,59,.25); color: #ff6b6b; }
+  .sev-high     { background: rgba(255,159,0,.2);  color: var(--warn); }
+  .sev-medium   { background: rgba(0,198,255,.15); color: var(--accent); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .controls { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+  .btn {
+    padding: 5px 14px; border-radius: 6px; border: 1px solid var(--border);
+    background: rgba(255,255,255,.04); color: var(--text); font-size: 0.75rem;
+    cursor: pointer; transition: .2s;
+  }
+  .btn:hover { background: rgba(0,198,255,.1); border-color: var(--accent); }
+  .btn.danger { border-color: var(--danger); color: var(--danger); }
+
+  select {
+    background: var(--card); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 4px 10px; font-size: 0.75rem;
+  }
+
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; }
+    .feed-card, .log-card { grid-column: 1; }
+    .emerg-card, .conf-card, .signal-card, .motion-card { grid-column: 1; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🚑 Emergency Detection Dashboard</h1>
+  <div class="hdr-right">
+    <span id="clock">--:--:--</span>
+    <div class="live-dot"></div>
+    <span>LIVE</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- Camera Feed -->
+  <div class="card feed-card">
+    <div class="card-title">
+      🎥 Live Camera Feed
+      <span class="badge" id="cam-label">CAM-001</span>
+      <div style="margin-left:auto">
+        <select id="cam-select" onchange="changeCam(this.value)">
+          <option value="CAM-001">CAM-001 · North Junction</option>
+          <option value="CAM-002">CAM-002 · South Gate</option>
+          <option value="CAM-003">CAM-003 · East Corridor</option>
+          <option value="CAM-004">CAM-004 · West Ring</option>
+        </select>
+      </div>
+    </div>
+    <div id="camera-feed">
+      <span id="feed-placeholder">📡 Connecting to camera feed…</span>
+      <img id="feed-img" src="" alt="live feed"/>
+      <div class="feed-overlay">
+        <div class="feed-stat">Vehicles: <span id="ov-total">–</span></div>
+        <div class="feed-stat">Congestion: <span id="ov-cong">–</span></div>
+        <div class="feed-stat">Direction: <span id="ov-dir">–</span></div>
+        <div class="feed-stat">Speed: <span id="ov-spd">–</span> km/h</div>
+        <div class="feed-stat">FPS: <span id="ov-fps">–</span></div>
+        <div class="feed-stat">Model: <span id="ov-model" style="color:#aaa">ViT+TCN</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Emergency Status -->
+  <div class="card emerg-card">
+    <div class="card-title">🚨 Emergency Status</div>
+    <div class="emerg-box ok" id="emerg-box">
+      <div class="emerg-icon" id="emerg-icon">✅</div>
+      <div class="emerg-label" id="emerg-label">No Emergency</div>
+      <div class="emerg-sub" id="emerg-sub">All clear · monitoring active</div>
+    </div>
+    <div class="stat-row"><span>Fused Score</span><span class="stat-val" id="fused-score">0.00</span></div>
+    <div class="stat-row"><span>Vehicle Type</span><span class="stat-val" id="emerg-vtype">–</span></div>
+    <div class="stat-row"><span>Direction</span><span class="stat-val" id="emerg-dir">–</span></div>
+    <div class="stat-row"><span>Speed</span><span class="stat-val" id="emerg-spd">–</span></div>
+    <div class="stat-row"><span>Override Duration</span><span class="stat-val" id="emerg-dur">–</span></div>
+    <div class="stat-row"><span>TCN Conf Avg</span><span class="stat-val" id="tcn-avg">–</span></div>
+    <div style="margin-top:10px; display:flex; gap:8px">
+      <button class="btn danger" onclick="clearOverride()">Clear Override</button>
+      <button class="btn" onclick="fetchStats()">Refresh</button>
+    </div>
+  </div>
+
+  <!-- Confidence Chart (Feature 3) -->
+  <div class="card conf-card">
+    <div class="card-title">📈 Confidence Over Time <span class="badge">Feature 3</span></div>
+    <canvas id="confChart"></canvas>
+    <div style="margin-top:8px; font-size:0.7rem; color:var(--sub)">
+      Threshold: <span style="color:var(--warn)" id="threshold-label">0.75</span> |
+      Confirmed when avg ≥ threshold
+    </div>
+  </div>
+
+  <!-- Signal Override (Feature 5) -->
+  <div class="card signal-card">
+    <div class="card-title">🚦 Signal Override Status <span class="badge">Feature 5</span></div>
+    <div class="signal-grid" id="signal-grid">
+      <div class="signal-lane red-active" id="sig-north">
+        <div class="dir">⬆️</div><div>North</div><div id="sig-n-status" style="font-size:.65rem;color:var(--sub)">RED</div>
+      </div>
+      <div class="signal-lane red-active" id="sig-south">
+        <div class="dir">⬇️</div><div>South</div><div id="sig-s-status" style="font-size:.65rem;color:var(--sub)">RED</div>
+      </div>
+      <div class="signal-lane red-active" id="sig-east">
+        <div class="dir">➡️</div><div>East</div><div id="sig-e-status" style="font-size:.65rem;color:var(--sub)">RED</div>
+      </div>
+      <div class="signal-lane red-active" id="sig-west">
+        <div class="dir">⬅️</div><div>West</div><div id="sig-w-status" style="font-size:.65rem;color:var(--sub)">RED</div>
+      </div>
+    </div>
+    <div id="override-phase" style="margin-top:10px; font-size:0.72rem; color:var(--sub)">No active override</div>
+  </div>
+
+  <!-- Motion Tracking (Feature 4) -->
+  <div class="card motion-card">
+    <div class="card-title">📍 Motion Tracking <span class="badge">Feature 4</span></div>
+    <div style="display:flex; align-items:center; gap:16px;">
+      <div class="compass">
+        <div class="compass-labels">
+          <span class="n">N</span><span class="s">S</span>
+          <span class="e">E</span><span class="w">W</span>
+        </div>
+        <div class="compass-needle" id="compass-needle"></div>
+      </div>
+      <div>
+        <div class="stat-row"><span>Direction</span><span class="stat-val" id="mt-dir">–</span></div>
+        <div class="stat-row"><span>Speed</span><span class="stat-val" id="mt-spd">– km/h</span></div>
+        <div class="stat-row"><span>ΔX / ΔY</span><span class="stat-val" id="mt-dxy">–</span></div>
+      </div>
+    </div>
+    <div style="margin-top:8px; font-size:0.7rem; color:var(--sub)">
+      Tracking via bounding-box centroid δ per frame
+    </div>
+  </div>
+
+  <!-- Event Log (Feature 8) -->
+  <div class="card log-card">
+    <div class="card-title">
+      🧾 Emergency Event Log <span class="badge">Feature 8</span>
+      <button class="btn" style="margin-left:auto; font-size:0.68rem" onclick="fetchLog()">Refresh</button>
+    </div>
+    <table class="log-table">
+      <thead>
+        <tr>
+          <th>Timestamp</th><th>Camera</th><th>Intersection</th>
+          <th>Vehicle</th><th>Direction</th><th>Confidence</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="log-body">
+        <tr><td colspan="7" style="text-align:center;color:var(--sub);padding:20px">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</main>
+
+<script>
+// ─── Auth token (reuse existing JWT from sessionStorage / demo) ───────────────
+const TOKEN = sessionStorage.getItem('access_token') || localStorage.getItem('access_token') || '';
+const AUTH  = TOKEN ? { 'Authorization': 'Bearer ' + TOKEN } : {};
+
+let currentCam = 'CAM-001';
+let currentIntersection = 'INT-001';
+
+// ─── Chart.js confidence chart ────────────────────────────────────────────────
+const confCtx = document.getElementById('confChart').getContext('2d');
+const confChart = new Chart(confCtx, {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [{
+      label: 'Fused Confidence',
+      data: [],
+      borderColor: '#00c6ff',
+      backgroundColor: 'rgba(0,198,255,.12)',
+      fill: true,
+      tension: 0.4,
+      pointRadius: 3,
+    }, {
+      label: 'Threshold',
+      data: [],
+      borderColor: '#ff9f00',
+      borderDash: [5, 5],
+      pointRadius: 0,
+      fill: false,
+    }],
+  },
+  options: {
+    animation:  false,
+    responsive: true,
+    plugins:    { legend: { labels: { color: '#7c8db0', font: { size: 10 } } } },
+    scales: {
+      x: { ticks: { color: '#7c8db0', font: { size: 9 } }, grid: { color: '#1e2d4a' } },
+      y: { min: 0, max: 1, ticks: { color: '#7c8db0', font: { size: 9 } }, grid: { color: '#1e2d4a' } },
+    },
+  },
+});
+
+function updateConfChart(history, threshold) {
+  const labels = history.map((_, i) => `T-${history.length - i}`).reverse();
+  confChart.data.labels                  = labels;
+  confChart.data.datasets[0].data        = [...history];
+  confChart.data.datasets[1].data        = history.map(() => threshold);
+  confChart.update('none');
+  document.getElementById('threshold-label').textContent = threshold;
+}
+
+// ─── Clock ────────────────────────────────────────────────────────────────────
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+}
+setInterval(updateClock, 1000); updateClock();
+
+// ─── Compass ──────────────────────────────────────────────────────────────────
+const DIRECTION_DEG = { North: 0, East: 90, South: 180, West: 270, Unknown: 0 };
+function updateCompass(dir) {
+  const deg = DIRECTION_DEG[dir] ?? 0;
+  document.getElementById('compass-needle').style.transform = `rotate(${deg}deg)`;
+}
+
+// ─── Signal indicator ─────────────────────────────────────────────────────────
+function updateSignals(override) {
+  const dirs   = ['north', 'south', 'east', 'west'];
+  const active = override && override.direction ? override.direction.toLowerCase() : null;
+
+  dirs.forEach(d => {
+    const el = document.getElementById('sig-' + d);
+    const st = document.getElementById('sig-' + d[0] + '-status');
+    el.className = 'signal-lane';
+    if (!active) {
+      el.classList.add('red-active');
+      st.textContent = 'NORMAL';
+    } else if (d === active) {
+      el.classList.add('green-active');
+      st.textContent = '🟢 GREEN';
+    } else {
+      el.classList.add('red-active');
+      st.textContent = '🔴 HOLD';
+    }
+  });
+
+  const phaseEl = document.getElementById('override-phase');
+  if (override && override.phase && override.phase.length) {
+    const steps = override.phase.map(p => p.action.replace(/_/g, ' ')).join(' → ');
+    phaseEl.textContent = '⚡ Phase: ' + steps;
+  } else {
+    phaseEl.textContent = 'No active override';
+  }
+}
+
+// ─── Emergency status box ─────────────────────────────────────────────────────
+function updateEmergencyBox(emerg) {
+  const box   = document.getElementById('emerg-box');
+  const icon  = document.getElementById('emerg-icon');
+  const label = document.getElementById('emerg-label');
+  const sub   = document.getElementById('emerg-sub');
+
+  if (emerg && emerg.detected) {
+    box.className = 'emerg-box active';
+    icon.textContent  = '🚨';
+    label.textContent = emerg.vehicle_type || 'EMERGENCY VEHICLE';
+    sub.textContent   = emerg.message || 'Signal override active';
+  } else {
+    box.className = 'emerg-box ok';
+    icon.textContent  = '✅';
+    label.textContent = 'No Emergency';
+    sub.textContent   = 'All clear · monitoring active';
+  }
+
+  document.getElementById('fused-score').textContent =
+    emerg ? (emerg.fused_score ?? '–').toString().slice(0, 6) : '–';
+  document.getElementById('emerg-vtype').textContent = emerg?.vehicle_type ?? '–';
+  document.getElementById('emerg-dir').textContent   = emerg?.direction ?? '–';
+  document.getElementById('emerg-spd').textContent   = emerg?.speed_kmh != null ? emerg.speed_kmh + ' km/h' : '–';
+  document.getElementById('emerg-dur').textContent   = emerg?.override_duration != null ? emerg.override_duration + 's' : '–';
+
+  const tc = emerg?.temporal_confidence;
+  document.getElementById('tcn-avg').textContent = tc ? tc.avg.toFixed(3) : '–';
+}
+
+// ─── Motion tracking ──────────────────────────────────────────────────────────
+function updateMotion(mt) {
+  if (!mt) return;
+  document.getElementById('mt-dir').textContent = mt.direction ?? '–';
+  document.getElementById('mt-spd').textContent = mt.speed_kmh != null ? mt.speed_kmh + ' km/h' : '–';
+  document.getElementById('mt-dxy').textContent = mt.avg_dx != null ? `${mt.avg_dx} / ${mt.avg_dy}` : '–';
+  document.getElementById('ov-dir').textContent = mt.direction ?? '–';
+  document.getElementById('ov-spd').textContent = mt.speed_kmh ?? '–';
+  updateCompass(mt.direction ?? 'Unknown');
+}
+
+// ─── Poll detection result ────────────────────────────────────────────────────
+async function fetchDetectionResult() {
+  try {
+    const r    = await fetch(`/api/camera/detection-result/${currentCam}`, { headers: AUTH });
+    if (!r.ok) return;
+    const data = await r.json();
+    const res  = data.result;
+    if (!res) return;
+
+    document.getElementById('ov-total').textContent = res.total ?? '–';
+    document.getElementById('ov-cong').textContent  = res.congestion ?? '–';
+    document.getElementById('ov-fps').textContent   = res.fps?.toFixed(1) ?? '–';
+
+    updateEmergencyBox(res.emergency_vehicle);
+    updateMotion(res.motion_tracking);
+    updateSignals(res.active_signal_override);
+
+    const confHist = res.confidence_history ?? [];
+    updateConfChart(confHist, 0.75);
+  } catch (e) { /* silent */ }
+}
+
+// ─── Fetch confidence from dedicated endpoint ─────────────────────────────────
+async function fetchConfidence() {
+  try {
+    const r    = await fetch(`/api/emergency/confidence/${currentIntersection}`, { headers: AUTH });
+    if (!r.ok) return;
+    const data = await r.json();
+    updateConfChart(data.history ?? [], data.threshold ?? 0.75);
+    document.getElementById('tcn-avg').textContent = (data.avg_confidence ?? 0).toFixed(3);
+  } catch (e) { /* silent */ }
+}
+
+// ─── Fetch event log ──────────────────────────────────────────────────────────
+async function fetchLog() {
+  try {
+    const r    = await fetch('/api/emergency/log?limit=30', { headers: AUTH });
+    if (!r.ok) return;
+    const data = await r.json();
+    const tbody = document.getElementById('log-body');
+    if (!data.events || data.events.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--sub);padding:16px">No events logged yet</td></tr>';
+      return;
+    }
+    tbody.innerHTML = [...data.events].reverse().map(ev => `
+      <tr>
+        <td>${ev.timestamp?.replace('T', ' ').slice(0, 19)}</td>
+        <td>${ev.camera_id}</td>
+        <td>${ev.intersection_id}</td>
+        <td>${ev.vehicle_type}</td>
+        <td>${ev.direction}</td>
+        <td><span class="sev-badge sev-${ev.confidence > 0.9 ? 'critical' : ev.confidence > 0.75 ? 'high' : 'medium'}">
+            ${ev.confidence.toFixed(3)}</span></td>
+        <td style="font-size:.68rem;color:var(--sub)">${ev.action_taken}</td>
+      </tr>`).join('');
+  } catch (e) { /* silent */ }
+}
+
+// ─── Fetch dashboard stats ────────────────────────────────────────────────────
+async function fetchStats() {
+  fetchDetectionResult();
+  fetchConfidence();
+  fetchLog();
+}
+
+// ─── Clear signal override ────────────────────────────────────────────────────
+async function clearOverride() {
+  try {
+    await fetch(`/api/emergency/signal-override/${currentIntersection}/clear`,
+      { method: 'POST', headers: AUTH });
+    updateSignals(null);
+    document.getElementById('override-phase').textContent = 'Override cleared';
+  } catch (e) { /* silent */ }
+}
+
+// ─── Camera switch ────────────────────────────────────────────────────────────
+function changeCam(camId) {
+  currentCam = camId;
+  const intersectionMap = {
+    'CAM-001': 'INT-001', 'CAM-002': 'INT-002',
+    'CAM-003': 'INT-003', 'CAM-004': 'INT-004',
+  };
+  currentIntersection = intersectionMap[camId] ?? 'INT-001';
+  document.getElementById('cam-label').textContent = camId;
+
+  const img = document.getElementById('feed-img');
+  img.src   = `/api/camera/live-stream/${camId}`;
+  img.style.display = 'block';
+  document.getElementById('feed-placeholder').style.display = 'none';
+}
+
+// ─── Init ──────────────────────────────────────────────────────────────────────
+changeCam('CAM-001');
+fetchStats();
+setInterval(fetchDetectionResult, 2000);
+setInterval(fetchLog, 5000);
+</script>
+</body>
+</html>
